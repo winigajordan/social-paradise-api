@@ -7,6 +7,10 @@ import dbConfig from './config/db.config';
 import { UserModule } from './modules/user/user.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
+import { DemandModule } from './modules/demand/demand.module';
+import { GuestModule } from './modules/guest/guest.module';
+import { EventModule } from './modules/event/event.module';
+import { PriceModule } from './modules/price/price.module';
 
 @Module({
   imports: [
@@ -17,6 +21,10 @@ import { ConfigModule } from '@nestjs/config';
     }),
     UserModule,
     AuthModule,
+    DemandModule,
+    GuestModule,
+    EventModule,
+    PriceModule,
   ],
   controllers: [AppController],
   providers: [AppService],

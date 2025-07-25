@@ -13,6 +13,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe(
     {transform: true}
   ));
+
   // Déclarationd des Interceptors
   app.useGlobalInterceptors(new ResponseInterceptor());
 

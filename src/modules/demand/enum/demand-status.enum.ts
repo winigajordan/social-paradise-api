@@ -1,0 +1,7 @@
+export enum DemandStatus {
+  SOUMISE = 'SOUMISE',
+  VALIDEE = 'VALIDEE',
+  REFUSEE = 'REFUSEE',
+  PAYEE = 'PAYEE',
+  PAIEMENT_NOTIFIE = 'PAIEMENT_NOTIFIE',
+}

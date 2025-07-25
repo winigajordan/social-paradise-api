@@ -1,0 +1,33 @@
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  Generated
+} from 'typeorm';
+import { Demand } from '../../demand/entities/demand.entity';
+import { Price } from '../../price/entities/price.entity';
+
+@Entity()
+export class Event {
+
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  name: string;
+
+  @Column({ type: 'date' })
+  date: Date;
+
+  @Column()
+  @Generated('uuid')
+  slug: string;
+
+  @OneToMany(() => Demand, demand => demand.event)
+  demands: Demand[];
+
+  @OneToMany(() => Price, price => price.event, { cascade: true })
+  prices: Price[];
+
+}
