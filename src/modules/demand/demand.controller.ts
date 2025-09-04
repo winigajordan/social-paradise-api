@@ -1,11 +1,16 @@
 import {
   Controller,
   Post,
-  Body, Query, Param, Get,
+  Body,
+  Query,
+  Param,
+  Get,
+  Patch,
 } from '@nestjs/common';
 import { DemandService } from './demand.service';
 import { CreateDemandDto } from './dto/create-demand.dto';
 import { DemandFilterDto } from './dto/demand-filter.dto';
+import { UpdateDemandStatusDto } from './dto/update-demand-status.dto';
 
 @Controller('demand')
 export class DemandController {
@@ -27,6 +32,14 @@ export class DemandController {
     @Query() filter: DemandFilterDto,
   ) {
     return this.demandService.findByEventSlug(slug, filter);
+  }
+
+  @Patch(':slug/status')
+  async updateStatus(
+    @Param('slug') slug: string,
+    @Body() dto: UpdateDemandStatusDto,
+  ){
+    return this.demandService.updateStatus(slug, dto);
   }
 
 

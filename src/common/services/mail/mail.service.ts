@@ -7,15 +7,12 @@ export class MailService {
 
   private readonly brevoClient: SibApiV3Sdk.TransactionalEmailsApi;
 
-
-
   constructor(
     private readonly configService: ConfigService
   ) {
     const defaultClient = SibApiV3Sdk.ApiClient.instance;
     const apiKey = defaultClient.authentications['api-key'];
     apiKey.apiKey = this.configService.get<string>('BREVO_API_KEY') ;
-
     this.brevoClient = new SibApiV3Sdk.TransactionalEmailsApi();
   }
 
@@ -49,7 +46,7 @@ export class MailService {
     }
   }
 
-  async toAdmin(): Promise<void> {
+  async notifyNewDemandToAdmin(): Promise<void> {
     const recipient = this.configService.get<string>('BREVO_ADMIN_EMAIL');
     const email = this.createSendSmtpEmail(recipient!, 'BREVO_ADMIN_TEMPLATE_ID');
     await this.sendEmail(email);
@@ -57,6 +54,7 @@ export class MailService {
 
   async sendTemplateEmail(recipient: string, name: string): Promise<void> {
     const email = this.createSendSmtpEmail(recipient, 'BREVO_TEMPLATE_ID', { name });
+    console.log(`Sending template email: ${email}`);
     await this.sendEmail(email);
   }
 

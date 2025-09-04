@@ -1,4 +1,4 @@
-export enum DemandStatus {
+export enum   DemandStatus {
   SOUMISE = 'SOUMISE',
   VALIDEE = 'VALIDEE',
   REFUSEE = 'REFUSEE',

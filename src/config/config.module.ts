@@ -7,9 +7,8 @@ import jwtConfig from './jwt.config';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load : [dbConfig, jwtConfig]
-    })
-  ]
+      load: [dbConfig, jwtConfig],
+    }),
+  ],
 })
-
 export class AppConfigModule {}

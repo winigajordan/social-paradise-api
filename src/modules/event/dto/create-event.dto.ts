@@ -1,18 +1,22 @@
 import { IsDateString, IsString, ValidateNested, ArrayMinSize } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreatePriceDto } from '../../price/dto/create-price.dto';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateEventDto {
 
   @IsString()
+  @ApiProperty({ example: 'Nom de l\'evenement' })
   name: string;
 
   @IsDateString()
+  @ApiProperty({ example: '2025-12-31' })
   date: string;
 
   @ValidateNested({ each: true })
   @Type(() => CreatePriceDto)
   @ArrayMinSize(1)
+  @ApiProperty({ isArray: true })
   prices: CreatePriceDto[];
 
 }
