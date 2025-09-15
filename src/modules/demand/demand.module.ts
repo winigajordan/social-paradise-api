@@ -13,6 +13,7 @@ import { Event } from '../event/entities/event.entity';
   imports: [
     MailModule,
     TypeOrmModule.forFeature([Demand, Guest, Event])
-  ]
+  ],
+  exports: [DemandService],
 })
 export class DemandModule {}

@@ -1,4 +1,4 @@
 export enum DemandType{
-  INIQUE= "INIQUE",
+  UNIQUE= "UNIQUE",
   GROUP = "GROUP",
 }

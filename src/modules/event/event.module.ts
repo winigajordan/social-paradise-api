@@ -10,6 +10,7 @@ import { Event } from './entities/event.entity';
   providers: [EventService],
   imports: [
     TypeOrmModule.forFeature([Event, Price]),
-  ]
+  ],
+  exports: [EventService],
 })
 export class EventModule {}

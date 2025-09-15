@@ -23,10 +23,13 @@ export class EventService {
     const event = this.eventRepository.create({
       name,
       date: new Date(date),
+      prices: prices,
     });
     const savedEvent = await this.eventRepository.save(event);
 
+    /*
     const priceEntities = prices.map(price =>
+
       this.priceRepository.create({
         ...price,
         event: savedEvent,
@@ -34,7 +37,7 @@ export class EventService {
     );
 
     await this.priceRepository.save(priceEntities);
-
+    */
     return this.eventRepository.findOne({
       where: { id: savedEvent.id },
       relations: ['prices'],

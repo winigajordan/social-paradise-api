@@ -54,7 +54,12 @@ export class MailService {
 
   async sendTemplateEmail(recipient: string, name: string): Promise<void> {
     const email = this.createSendSmtpEmail(recipient, 'BREVO_TEMPLATE_ID', { name });
-    console.log(`Sending template email: ${email}`);
+    //console.log(`Sending template email: ${email}`);
+    await this.sendEmail(email);
+  }
+
+  async notifyValidationToMainGuest(recipient: string, name: string, ulr:string): Promise<void> {
+    const email = this.createSendSmtpEmail(recipient, 'BREVO_VALIDATE_TEMPLATE_ID', {'demandLink':ulr, name} );
     await this.sendEmail(email);
   }
 

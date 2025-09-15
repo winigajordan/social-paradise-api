@@ -11,6 +11,7 @@ import { DemandWithMainGuestDto } from './dto/demand-with-main-guest.dto';
 import { DemandFilterDto } from './dto/demand-filter.dto';
 import { DemandStatus } from './enum/demand-status.enum';
 import { UpdateDemandStatusDto } from './dto/update-demand-status.dto';
+import * as url from 'node:url';
 
 @Injectable()
 export class DemandService {
@@ -126,21 +127,40 @@ export class DemandService {
 
   async updateStatus(slug: string, dto: UpdateDemandStatusDto) {
     const demand = await this.demandRepository.findOne({where: { slug }});
+
     if (!demand)
       throw new HttpException(
         `Demande avec le slug ${slug} introuvable.`,
-        HttpStatus.NOT_FOUND,
+        HttpStatus.NOT_FOUND
       )
 
     demand.status = dto.status;
+    await this.demandRepository.save(demand);
 
-    switch (demand.status) {
-      case DemandStatus.VALIDEE: await this.validateDemand(demand);
+    switch (dto.status) {
+      case DemandStatus.VALIDEE: await this.validateDemand(demand, dto.status);
     }
-    return this.demandRepository.save(demand);
+
   }
 
-  async validateDemand(demand: Demand) {
+  async validateDemand(demand: Demand, status: DemandStatus) {
+
+    const mainGuest = await this.guestRepository.findOne({
+      where: {
+        demand: { id: demand.id },
+        isMainGuest: true,
+      },
+    });
+
+    if (!mainGuest) throw new HttpException("Invité principal non trouvé", HttpStatus.NOT_FOUND);
+
+    const demandLink : string = `http://www.event.socialparadise.com/demand/${demand.slug}`;
+
+    return this.mailService.notifyValidationToMainGuest(
+        mainGuest.email,
+        `${mainGuest.firstName} ${mainGuest.lastName}`,
+        demandLink,
+    )
 
   }
 

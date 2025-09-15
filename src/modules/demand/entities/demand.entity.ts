@@ -1,8 +1,18 @@
-import { Column, CreateDateColumn, Entity, Generated, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Generated,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { DemandStatus } from '../enum/demand-status.enum';
 import { Guest } from '../../guest/entities/guest.entity';
 import { Event } from '../../event/entities/event.entity';
 import { DemandType } from '../enum/demand-type.enum';
+import { Payment } from '../../payment/entities/payment.entity';
 
 @Entity()
 export class Demand {
@@ -27,7 +37,7 @@ export class Demand {
   @Column({
     type: 'enum',
     enum: DemandType,
-    default : DemandType.INIQUE,
+    default : DemandType.UNIQUE,
   })
   type : DemandType
 
@@ -38,6 +48,9 @@ export class Demand {
   @ManyToOne(() => Event, event => event.demands, { onDelete: 'SET NULL', nullable: true })
   event: Event;
 
-
+  @OneToMany(() => Payment, payment => payment.demand, {
+    cascade: true,
+  })
+  payments: Payment[];
 
 }

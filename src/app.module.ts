@@ -11,6 +11,7 @@ import { DemandModule } from './modules/demand/demand.module';
 import { GuestModule } from './modules/guest/guest.module';
 import { EventModule } from './modules/event/event.module';
 import { PriceModule } from './modules/price/price.module';
+import { PaymentModule } from './modules/payment/payment.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { PriceModule } from './modules/price/price.module';
     GuestModule,
     EventModule,
     PriceModule,
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
