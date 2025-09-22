@@ -11,6 +11,9 @@ export class Price {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column()
+  name: string;
+
   @Column('decimal', { precision: 10, scale: 2 })
   amount: number;
 

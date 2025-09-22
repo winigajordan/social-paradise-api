@@ -5,6 +5,9 @@ export class CreatePriceDto {
   @IsNumber()
   amount: number;
 
+  @IsString()
+  name: string;
+
   @IsDateString()
   startDate: string;
 
