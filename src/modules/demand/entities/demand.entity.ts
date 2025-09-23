@@ -48,9 +48,10 @@ export class Demand {
   @ManyToOne(() => Event, event => event.demands, { onDelete: 'SET NULL', nullable: true })
   event: Event;
 
-  @OneToMany(() => Payment, payment => payment.demand, {
+  @OneToOne(() => Payment, payment => payment.demand, {
     cascade: true,
+    nullable: true,
   })
-  payments: Payment[];
+  payment: Payment;
 
 }

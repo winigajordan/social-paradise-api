@@ -1,4 +1,4 @@
-import { IsEnum, IsNumber, IsSemVer, IsString, IsUUID } from 'class-validator';
+import { IsEnum, IsNumber, IsString, IsUUID } from 'class-validator';
 import { PaymentCanal } from '../enum/payment-canal.enum';
 
 export class CreatePaymentDto {
@@ -9,7 +9,7 @@ export class CreatePaymentDto {
   phoneNumber : string;
 
   @IsEnum(PaymentCanal)
-  canal: PaymentCanal;
+  paymentCanal: PaymentCanal;
 
   @IsUUID()
   demandSlug: string;

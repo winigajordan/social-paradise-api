@@ -3,8 +3,6 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
-  ManyToOne,
-  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -37,7 +35,8 @@ export class Payment {
 
 
 
-  @ManyToOne(() => Demand, demand => demand.payments, { onDelete: 'CASCADE' })
+  @OneToOne(() => Demand, demand => demand.payment, { onDelete: 'CASCADE' })
+  @JoinColumn()
   demand: Demand;
 
 

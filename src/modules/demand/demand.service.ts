@@ -11,7 +11,6 @@ import { DemandWithMainGuestDto } from './dto/demand-with-main-guest.dto';
 import { DemandFilterDto } from './dto/demand-filter.dto';
 import { DemandStatus } from './enum/demand-status.enum';
 import { UpdateDemandStatusDto } from './dto/update-demand-status.dto';
-import * as url from 'node:url';
 
 @Injectable()
 export class DemandService {
@@ -57,11 +56,11 @@ export class DemandService {
     const savedDemand = await this.demandRepository.save(demand);
 
     const guestEntities = guests.map((g) => {
-      const guest = this.guestRepository.create({
+
+      return this.guestRepository.create({
         ...g,
         demand: savedDemand,
       });
-      return guest;
     });
 
     await this.guestRepository.save(guestEntities);
@@ -124,6 +123,22 @@ export class DemandService {
     return demand;
   }
 
+  async findOneBySlugWithPayment(slug: string) {
+    const demand = await this.demandRepository.findOne({
+      where: { slug },
+      relations: ['payment'],
+    })
+
+    if (!demand) {
+      throw new HttpException(
+        `Demande avec le slug ${slug} introuvable.`,
+        HttpStatus.NOT_FOUND,
+      )
+    }
+
+    return demand;
+  }
+
 
   async updateStatus(slug: string, dto: UpdateDemandStatusDto) {
     const demand = await this.demandRepository.findOne({where: { slug }});
@@ -138,12 +153,16 @@ export class DemandService {
     await this.demandRepository.save(demand);
 
     switch (dto.status) {
-      case DemandStatus.VALIDEE: await this.validateDemand(demand, dto.status);
+      case DemandStatus.VALIDEE:
+        await this.validateDemand(demand);
+        break;
+      case DemandStatus.PAIEMENT_NOTIFIE:
+        break;
     }
 
   }
 
-  async validateDemand(demand: Demand, status: DemandStatus) {
+  async validateDemand(demand: Demand) {
 
     const mainGuest = await this.guestRepository.findOne({
       where: {
@@ -154,14 +173,13 @@ export class DemandService {
 
     if (!mainGuest) throw new HttpException("Invité principal non trouvé", HttpStatus.NOT_FOUND);
 
-    const demandLink : string = `http://www.event.socialparadise.com/demand/${demand.slug}`;
+    const demandLink : string = `https://www.event.socialparadise.com/demand/${demand.slug}`;
 
     return this.mailService.notifyValidationToMainGuest(
         mainGuest.email,
         `${mainGuest.firstName} ${mainGuest.lastName}`,
         demandLink,
     )
-
   }
 
 }
