@@ -13,10 +13,10 @@ async function bootstrap() {
     {transform: true}
   ));
 
-  // Déclarationd des Interceptors
+  // Déclaration des Interceptors
   app.useGlobalInterceptors(new ResponseInterceptor());
 
-  //Déclarationd des filters
+  //Déclaration des filters
   app.useGlobalFilters(new HttpExceptionFilter());
 
   //Swagger

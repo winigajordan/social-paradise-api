@@ -24,6 +24,15 @@ export class Event {
   @Generated('uuid')
   slug: string;
 
+  @Column({ nullable: true })
+  location: string;
+
+  @Column({ nullable: true })
+  coverImage?: string;
+
+  @Column({ type: 'text', nullable: true })
+  description?: string;
+
   @OneToMany(() => Demand, demand => demand.event)
   demands: Demand[];
 
