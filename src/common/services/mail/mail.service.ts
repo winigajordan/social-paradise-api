@@ -63,4 +63,46 @@ export class MailService {
     await this.sendEmail(email);
   }
 
+  async sendQrTicketsToMainGuest(
+    recipientEmail: string,
+    name: string,
+    guests: { slug: string; firstName: string; lastName: string }[],
+  ): Promise<void> {
+    const qrContent = this.generateQrHtmlForGuests(guests);
+
+    const email = this.createSendSmtpEmail(recipientEmail, 'BREVO_QR_TEMPLATE_ID', {
+      name,
+      qrContent,
+    });
+
+    await this.sendEmail(email);
+  }
+
+
+  private generateQrHtmlForGuests(guests: { slug: string; firstName: string; lastName: string }[]): string {
+    const baseUrl = this.configService.get<string>('EVENT_GUEST_CHECKIN_BASE_URL') || 'https://events.socialparadise.com/guest';
+
+    return guests
+      .map((guest) => {
+        const guestUrl = `${baseUrl}/${guest.slug}`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(guestUrl)}&size=400x400`;
+
+        return `
+          <div style="margin-bottom: 50px;">
+            <p style="font-weight: bold; font-size: 14px; margin-bottom: 5px;">
+              ${guest.firstName} ${guest.lastName}
+            </p>
+            <img src="${qrUrl}" alt="QR Code" style="border: 1px solid #ccc; padding: 5px;" />
+            <br />
+            <a href="${qrUrl}" download style="display: inline-block; margin-top: 8px; font-size: 13px; color: #1a73e8; text-decoration: underline;">
+              Télécharger le QR code
+            </a>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+
+
 }

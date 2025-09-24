@@ -158,6 +158,9 @@ export class DemandService {
         break;
       case DemandStatus.PAIEMENT_NOTIFIE:
         break;
+      case DemandStatus.PAYEE:
+        await this.sendQrCodes(demand);
+        break;
     }
 
   }
@@ -180,6 +183,34 @@ export class DemandService {
         `${mainGuest.firstName} ${mainGuest.lastName}`,
         demandLink,
     )
+  }
+
+  async sendQrCodes(demand: Demand) {
+    const guests : Guest[] = await this.guestRepository.find({
+      where: {
+        demand: { id: demand.id },
+      }
+    })
+
+    const mainGuest = guests.find(
+      guest => guest.isMainGuest
+    )
+
+    if (!mainGuest) throw new HttpException(
+      'Invité principal non trouvé',
+      HttpStatus.NOT_FOUND,
+    )
+
+    await this.mailService.sendQrTicketsToMainGuest(
+      mainGuest.email,
+      mainGuest.firstName,
+      guests.map(guests => ({
+        ...guests,
+      }))
+    )
+
+    return HttpStatus.ACCEPTED;
+
   }
 
 }
