@@ -110,7 +110,7 @@ export class DemandService {
   async findOneBySlug(slug: string) {
     const demand = await this.demandRepository.findOne({
       where: { slug },
-      relations: ['guests', 'event'],
+      relations: ['guests', 'event','payment'],
     });
 
     if (!demand) {

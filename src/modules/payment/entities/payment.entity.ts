@@ -21,7 +21,7 @@ export class Payment {
   @CreateDateColumn()
   date: Date;
 
-  @Column()
+  @Column({nullable : true})
   phoneNumber: string;
 
   @Column(

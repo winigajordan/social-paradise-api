@@ -7,6 +7,7 @@ export class DemandWithMainGuestDto {
   slug: string;
   status: DemandStatus;
   type: DemandType;
+  numberOfGuests?: number;
   createdAt: Date;
   mainGuest: {
     firstName: string;
@@ -25,6 +26,7 @@ export class DemandWithMainGuestDto {
     this.id = demand.id;
     this.slug = demand.slug;
     this.type = demand.type;
+    this.numberOfGuests = demand.guests.length;
     this.status = demand.status;
     this.createdAt = demand.createdAt;
     this.mainGuest = {
