@@ -3,6 +3,7 @@ import {
   IsString,
   ValidateNested,
   ArrayMinSize,
+  IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreatePriceDto } from '../../price/dto/create-price.dto';
@@ -24,6 +25,7 @@ export class CreateEventDto {
 
   @IsString()
   @ApiProperty({ example: 'Description' })
+  @IsOptional()
   description : string;
 
 
