@@ -9,14 +9,11 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-
-
   @Post("/login")
   @ApiOperation({ summary: 'Login' })
   async login(@Body() loginDto: LoginDto) {
-     const user =  await this.authService.validateUser(loginDto);
-      return this.authService.login(user)
-
+    const user = await this.authService.validateUser(loginDto);
+    return this.authService.login(user);
   }
 
 

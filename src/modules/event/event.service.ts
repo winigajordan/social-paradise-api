@@ -18,10 +18,12 @@ export class EventService {
   async create(createEventDto: CreateEventDto) {
 
 
-    const { name, date, prices } = createEventDto;
+    const { name, date, prices, location, description } = createEventDto;
 
     const event = this.eventRepository.create({
       name,
+      location,
+      description,
       date: new Date(date),
       prices: prices,
     });
