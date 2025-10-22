@@ -1,6 +1,12 @@
-import { IsDateString, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsDateString,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreatePriceDto } from '../../price/dto/create-price.dto';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateEventDto {
   @IsOptional()
@@ -11,8 +17,20 @@ export class UpdateEventDto {
   @IsDateString()
   date?: string;
 
+  @IsString()
+  @ApiProperty({ example: 'Localisation' })
+  location : string
+
+  @IsString()
+  @ApiProperty({ example: 'Description' })
+  @IsOptional()
+  description : string;
+
+
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreatePriceDto)
   prices?: (CreatePriceDto & { id?: number })[];
+
+
 }
