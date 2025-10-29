@@ -12,6 +12,7 @@ import { GuestModule } from './modules/guest/guest.module';
 import { EventModule } from './modules/event/event.module';
 import { PriceModule } from './modules/price/price.module';
 import { PaymentModule } from './modules/payment/payment.module';
+import { FileUploadModule } from './modules/file-upload/file-upload.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { PaymentModule } from './modules/payment/payment.module';
     EventModule,
     PriceModule,
     PaymentModule,
+    FileUploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
