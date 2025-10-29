@@ -17,12 +17,13 @@ export class EventService {
 
   async create(createEventDto: CreateEventDto) {
 
-    const { name, date, prices, location, description } = createEventDto;
+    const { name, date, prices, location, description, coverImage } = createEventDto;
 
     const event = this.eventRepository.create({
       name,
       location,
       description,
+      coverImage,
       date: new Date(date),
       prices: prices,
     });
@@ -80,6 +81,7 @@ export class EventService {
 
     // Mise à jour des champs simples
     if (dto.name) event.name = dto.name;
+    if (dto.coverImage) event.coverImage = dto.coverImage;
     if (dto.location) event.location = dto.location;
     if (dto.description) event.description = dto.description;
     if (dto.date) event.date = new Date(dto.date);

@@ -4,6 +4,7 @@ import {
   ValidateNested,
   ArrayMinSize,
   IsOptional,
+  IsUrl,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreatePriceDto } from '../../price/dto/create-price.dto';
@@ -27,6 +28,11 @@ export class CreateEventDto {
   @ApiProperty({ example: 'Description' })
   @IsOptional()
   description : string;
+
+  @IsUrl()
+  @ApiProperty({ example: 'Description' })
+  @IsOptional()
+  coverImage : string;
 
 
   @ValidateNested({ each: true })

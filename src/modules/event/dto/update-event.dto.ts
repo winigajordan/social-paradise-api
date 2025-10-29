@@ -2,6 +2,7 @@ import {
   IsDateString,
   IsOptional,
   IsString,
+  IsUrl,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -25,6 +26,11 @@ export class UpdateEventDto {
   @ApiProperty({ example: 'Description' })
   @IsOptional()
   description : string;
+
+  @IsUrl()
+  @ApiProperty({ example: 'Description' })
+  @IsOptional()
+  coverImage : string;
 
 
   @IsOptional()
