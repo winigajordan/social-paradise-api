@@ -213,4 +213,30 @@ export class DemandService {
 
   }
 
+  async getDemandStatsByEvent(eventSlug: string) {
+    const event = await this.eventRepository.findOne({ where: { slug: eventSlug } });
+
+    if (!event) throw new HttpException(
+      `Aucun événement trouvé avec le slug ${eventSlug}`,
+      HttpStatus.NOT_FOUND,
+    )
+
+    const rawStats = await this.demandRepository
+      .createQueryBuilder('demand')
+      .leftJoin('demand.guests', 'guest')
+      .select('demand.status', 'status')
+      .addSelect('COUNT(DISTINCT demand.id)', 'totalDemands')
+      .addSelect('COUNT(guest.id)', 'totalParticipants')
+      .where('demand.eventId = :eventId', { eventId: event.id }) // ici on utilise l'ID interne
+      .groupBy('demand.status')
+      .getRawMany();
+
+    return rawStats.map(row => ({
+      status: row.status,
+      totalDemands: Number(row.totalDemands),
+      totalParticipants: Number(row.totalParticipants),
+    }));
+  }
+
+
 }

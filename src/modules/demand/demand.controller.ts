@@ -42,5 +42,11 @@ export class DemandController {
     return this.demandService.updateStatus(slug, dto);
   }
 
+  @Get('stats/:slug')
+  async getStats(@Param('slug') slug: string) {
+    return this.demandService.getDemandStatsByEvent(slug);
+  }
+
+
 
 }
