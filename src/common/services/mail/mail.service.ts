@@ -80,12 +80,13 @@ export class MailService {
 
 
   private generateQrHtmlForGuests(guests: { slug: string; firstName: string; lastName: string }[]): string {
-    const baseUrl = this.configService.get<string>('EVENT_GUEST_CHECKIN_BASE_URL') || 'https://events.socialparadise.com/guest';
+    //const baseUrl = this.configService.get<string>('EVENT_GUEST_CHECKIN_BASE_URL') || 'https://events.socialparadise.com/guest';
 
     return guests
       .map((guest) => {
-        const guestUrl = `${baseUrl}/${guest.slug}`;
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(guestUrl)}&size=400x400`;
+        //const guestUrl = `${baseUrl}/${guest.slug}`;
+        //const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(guestUrl)}&size=400x400`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${guest.slug}&size=400x400`;
 
         return `
           <div style="margin-bottom: 50px;">
