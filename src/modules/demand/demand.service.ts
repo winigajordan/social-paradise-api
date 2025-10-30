@@ -53,7 +53,7 @@ export class DemandService {
       throw new HttpException('Événement introuvable', HttpStatus.NOT_FOUND);
     demand.event = event;
 
-    const savedDemand = await this.demandRepository.save(demand);
+    let savedDemand = await this.demandRepository.save(demand);
 
     const guestEntities = guests.map((g) => {
 
@@ -70,12 +70,14 @@ export class DemandService {
       mainGuest!.firstName + ' ' + mainGuest!.lastName,
     );
 
-    await this.mailService.notifyNewDemandToAdmin();
-
-    return this.demandRepository.findOne({
-      where: { id: savedDemand.id },
-      relations: ['guests'],
+     savedDemand = await this.demandRepository.findOneOrFail({
+      where: { slug: savedDemand.slug },
+      relations: ['guests', 'event'],
     });
+
+    await this.mailService.notifyNewDemandToAdmin(savedDemand);
+
+    return savedDemand;
   }
 
   async findByEventSlug(slug: string, filter?: DemandFilterDto) {

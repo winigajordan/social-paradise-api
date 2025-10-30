@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as SibApiV3Sdk from 'sib-api-v3-sdk';
 import { ConfigService } from '@nestjs/config';
+import { Demand } from '../../../modules/demand/entities/demand.entity';
 
 @Injectable()
 export class MailService {
@@ -46,9 +47,27 @@ export class MailService {
     }
   }
 
-  async notifyNewDemandToAdmin(): Promise<void> {
-    const recipient = this.configService.get<string>('BREVO_ADMIN_EMAIL');
-    const email = this.createSendSmtpEmail(recipient!, 'BREVO_ADMIN_TEMPLATE_ID');
+  async notifyNewDemandToAdmin( savedDemand : Demand): Promise<void> {
+
+    const mainGuest = savedDemand.guests.find(
+      (g)=> g.isMainGuest
+    )!
+
+    const recipient = this.configService.get<string>('BREVO_ADMIN_EMAIL')!;
+    const frontUrl =this.configService.get<string>('FRONT_URL')!;
+    const demandPath = this.configService.get<string>('EVENT_DETAILS_PATH')!;
+    const eventSlug = savedDemand.event.slug;
+    const demandSlug = savedDemand.slug;
+
+    const demandUrl = frontUrl + demandPath + eventSlug;
+
+    const params = {
+      'name':`${mainGuest.firstName} ${mainGuest.lastName}`,
+      'link': demandUrl,
+      'demandSlug': demandSlug
+    }
+
+    const email = this.createSendSmtpEmail(recipient!, 'BREVO_ADMIN_TEMPLATE_ID', params);
     await this.sendEmail(email);
   }
 
