@@ -1,6 +1,6 @@
 import { IsEnum, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 import { PaymentCanal } from '../enum/payment-canal.enum';
-import { IsNull } from 'typeorm';
+import { PaymentPlace } from '../enum/payment-place';
 
 export class CreatePaymentDto {
   @IsNumber()
@@ -12,6 +12,10 @@ export class CreatePaymentDto {
 
   @IsEnum(PaymentCanal)
   paymentCanal: PaymentCanal;
+
+  @IsOptional()
+  @IsEnum(PaymentPlace)
+  paymentPlace: PaymentPlace;
 
   @IsUUID()
   demandSlug: string;

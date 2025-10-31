@@ -178,12 +178,12 @@ export class DemandService {
 
     if (!mainGuest) throw new HttpException("Invité principal non trouvé", HttpStatus.NOT_FOUND);
 
-    const demandLink : string = `https://www.event.socialparadise.com/demand/${demand.slug}`;
+    //const demandLink : string = `https://www.event.socialparadise.com/demand/${demand.slug}`;
 
     return this.mailService.notifyValidationToMainGuest(
         mainGuest.email,
         `${mainGuest.firstName} ${mainGuest.lastName}`,
-        demandLink,
+        demand.slug,
     )
   }
 

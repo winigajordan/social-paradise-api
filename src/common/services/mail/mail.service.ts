@@ -55,16 +55,18 @@ export class MailService {
 
     const recipient = this.configService.get<string>('BREVO_ADMIN_EMAIL')!;
     const frontUrl =this.configService.get<string>('FRONT_URL')!;
-    const demandPath = this.configService.get<string>('EVENT_DETAILS_PATH')!;
+    const demandPath = this.configService.get<string>('ADMIN_EVENT_DETAILS_PATH')!;
     const eventSlug = savedDemand.event.slug;
     const demandSlug = savedDemand.slug;
-
-    const demandUrl = frontUrl + demandPath + eventSlug;
+    const guestNumber = savedDemand.guests.length;
+    const link = frontUrl + demandPath + eventSlug;
+    const name = `${mainGuest.firstName} ${mainGuest.lastName}`
 
     const params = {
-      'name':`${mainGuest.firstName} ${mainGuest.lastName}`,
-      'link': demandUrl,
-      'demandSlug': demandSlug
+      name,
+      link,
+      demandSlug,
+      guestNumber
     }
 
     const email = this.createSendSmtpEmail(recipient!, 'BREVO_ADMIN_TEMPLATE_ID', params);
@@ -77,8 +79,15 @@ export class MailService {
     await this.sendEmail(email);
   }
 
-  async notifyValidationToMainGuest(recipient: string, name: string, ulr:string): Promise<void> {
-    const email = this.createSendSmtpEmail(recipient, 'BREVO_VALIDATE_TEMPLATE_ID', {'demandLink':ulr, name} );
+  async notifyValidationToMainGuest(recipient: string, name: string, slug:string): Promise<void> {
+    console.info("ENVOIE DE MAIL POUR VALIDATION")
+
+    const demandLink =
+      this.configService.get<string>('FRONT_URL')! +
+      this.configService.get<string>('CLIENT_DEMAND_PAYMENT_NOTIFICATION_PATH')! +
+      slug;
+
+    const email = this.createSendSmtpEmail(recipient, 'BREVO_VALIDATE_TEMPLATE_ID', { demandLink, name} );
     await this.sendEmail(email);
   }
 
@@ -105,16 +114,16 @@ export class MailService {
       .map((guest) => {
         //const guestUrl = `${baseUrl}/${guest.slug}`;
         //const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(guestUrl)}&size=400x400`;
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${guest.slug}&size=400x400`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${guest.slug}&size=300x300`;
 
         return `
-          <div style="margin-bottom: 50px;">
-            <p style="font-weight: bold; font-size: 14px; margin-bottom: 5px;">
+          <div style="margin-bottom: 50px;  text-align: center;">
+            <p style="font-weight: bold; font-size: 18px; margin-bottom: 10px; color: #D36B3D;">
               ${guest.firstName} ${guest.lastName}
             </p>
             <img src="${qrUrl}" alt="QR Code" style="border: 1px solid #ccc; padding: 5px;" />
             <br />
-            <a href="${qrUrl}" download style="display: inline-block; margin-top: 8px; font-size: 13px; color: #1a73e8; text-decoration: underline;">
+            <a href="${qrUrl}" download style="display: inline-block; margin-top: 8px; font-size: 13px; color: #D36B3D; text-decoration: underline;">
               Télécharger le QR code
             </a>
           </div>

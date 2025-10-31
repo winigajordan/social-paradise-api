@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Demand } from '../../demand/entities/demand.entity';
 import { PaymentCanal } from '../enum/payment-canal.enum';
+import { PaymentPlace } from '../enum/payment-place';
 
 @Entity()
 export class Payment {
@@ -26,12 +27,21 @@ export class Payment {
 
   @Column(
     {
+      nullable: true,
       type : 'enum',
       enum: PaymentCanal,
-      default: PaymentCanal.CASH,
     }
   )
   paymentCanal: PaymentCanal;
+
+@Column(
+  {
+    nullable : true,
+    type : 'enum',
+    enum: PaymentPlace,
+  }
+)
+paymentPlace: PaymentPlace;
 
 
 

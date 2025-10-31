@@ -20,7 +20,7 @@ export class PaymentService {
     );
 
     if (demand.payment) {
-      return new HttpException('Payement already exists', HttpStatus.NOT_FOUND);
+      return new HttpException('Payement already exists', HttpStatus.BAD_REQUEST);
     }
 
     const payment = this.paymentRepository.create({
