@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { Demand } from '../../demand/entities/demand.entity';
 import { Price } from '../../price/entities/price.entity';
+import { Table } from '../../table/entities/table.entity';
 
 @Entity()
 export class Event {
@@ -38,5 +39,8 @@ export class Event {
 
   @OneToMany(() => Price, price => price.event, { cascade: true })
   prices: Price[];
+
+  @OneToMany(() => Table, table => table.event, { cascade: true })
+  tables: Table[];
 
 }

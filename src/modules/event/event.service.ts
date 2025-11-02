@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { Event } from './entities/event.entity';
 import { Price } from '../price/entities/price.entity';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { Table } from '../table/entities/table.entity';
 
 @Injectable()
 export class EventService {
@@ -15,9 +16,12 @@ export class EventService {
   @InjectRepository(Price)
   private priceRepository: Repository<Price>
 
+  @InjectRepository(Table)
+  private tableRepository: Repository<Table>
+
   async create(createEventDto: CreateEventDto) {
 
-    const { name, date, prices, location, description, coverImage } = createEventDto;
+    const { name, date, prices, tables, location, description, coverImage } = createEventDto;
 
     const event = this.eventRepository.create({
       name,
@@ -26,6 +30,7 @@ export class EventService {
       coverImage,
       date: new Date(date),
       prices: prices,
+      tables: tables
     });
     const savedEvent = await this.eventRepository.save(event);
 
@@ -42,7 +47,7 @@ export class EventService {
     */
     return this.eventRepository.findOne({
       where: { id: savedEvent.id },
-      relations: ['prices'],
+      relations: ['prices','tables'],
     });
 
   }
@@ -59,7 +64,7 @@ export class EventService {
   async findOneBySlug(slug: string) {
     const event = await this.eventRepository.findOne({
       where: { slug },
-      relations: ['prices'],
+      relations: ['prices','tables'],
     });
 
     if (!event) {
@@ -73,7 +78,7 @@ export class EventService {
   async update(slug: string, dto: UpdateEventDto)  {
     const event = await this.eventRepository.findOne({
       where: { slug },
-      relations: ['prices'],
+      relations: ['prices','tables'],
     });
 
 
@@ -103,6 +108,7 @@ export class EventService {
           const existing = event.prices.find(p => p.id === priceDto.id);
           if (existing) {
             existing.amount = priceDto.amount;
+            existing.name = priceDto.name;
             existing.startDate = new Date(priceDto.startDate);
             existing.endDate = new Date(priceDto.endDate);
             updatedPrices.push(existing);
@@ -120,12 +126,45 @@ export class EventService {
       event.prices = updatedPrices;
     }
 
+    if (dto.tables) {
+      const newTables = dto.tables;
+
+      // 1. Supprimer les prix absents de la nouvelle liste
+      const incomingIdsT  = newTables.filter(p => p.id).map(p => p.id);
+      const toDeleteT = event.tables.filter(p => !incomingIdsT.includes(p.id));
+      await this.tableRepository.remove(toDeleteT);
+
+      // 2. Mettre à jour ou créer les prix
+      const updatedTables: Table[] = [];
+
+      for (const tableDto of newTables) {
+        if (tableDto.id) {
+          const existingT = event.tables.find(p => p.id === tableDto.id);
+          if (existingT) {
+            existingT.amount = tableDto.amount;
+            existingT.capacity = tableDto.capacity;
+            existingT.name = tableDto.name;
+            updatedTables.push(existingT);
+          }
+        } else {
+          const newTable = this.tableRepository.create({
+            ...tableDto,
+            event: event,
+          });
+          updatedTables.push(newTable);
+        }
+      }
+
+      // Remplacer la relation
+      event.tables = updatedTables;
+    }
+
     // Enregistrer l'événement
     await this.eventRepository.save(event);
 
     return this.eventRepository.findOne({
       where: { id: event.id },
-      relations: ['prices'],
+      relations: ['prices','tables']
     });
   }
 

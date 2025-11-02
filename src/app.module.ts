@@ -13,6 +13,7 @@ import { EventModule } from './modules/event/event.module';
 import { PriceModule } from './modules/price/price.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { FileUploadModule } from './modules/file-upload/file-upload.module';
+import { TableModule } from './modules/table/table.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { FileUploadModule } from './modules/file-upload/file-upload.module';
     PriceModule,
     PaymentModule,
     FileUploadModule,
+    TableModule
   ],
   controllers: [AppController],
   providers: [AppService],
