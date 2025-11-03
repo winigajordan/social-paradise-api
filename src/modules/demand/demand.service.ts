@@ -1,8 +1,8 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { CreateDemandDto } from './dto/create-demand.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Demand } from './entities/demand.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Guest } from '../guest/entities/guest.entity';
 import { MailService } from '../../common/services/mail/mail.service';
 import { Event } from '../event/entities/event.entity';
@@ -11,6 +11,8 @@ import { DemandWithMainGuestDto } from './dto/demand-with-main-guest.dto';
 import { DemandFilterDto } from './dto/demand-filter.dto';
 import { DemandStatus } from './enum/demand-status.enum';
 import { UpdateDemandStatusDto } from './dto/update-demand-status.dto';
+import { Table } from '../table/entities/table.entity';
+import { DemandTableItem } from './entities/demand-table-item.entity';
 
 @Injectable()
 export class DemandService {
@@ -22,6 +24,12 @@ export class DemandService {
 
   @InjectRepository(Event)
   private readonly eventRepository: Repository<Event>;
+
+  @InjectRepository(Table)
+  private readonly tableRepo: Repository<Table>;
+
+  @InjectRepository(DemandTableItem)
+  private readonly itemRepo: Repository<DemandTableItem>;
 
   @Inject(MailService)
   private readonly mailService: MailService;
@@ -47,12 +55,34 @@ export class DemandService {
 
     const event = await this.eventRepository.findOne({
       where: { slug: createDemandDto.eventSlug },
+      relations: ['tables'],
     });
+
+    /*if (tables.length !== wantedIds.length) {
+      throw new BadRequestException('Certaines tables sont introuvables.');
+    }*/
 
     if (!event)
       throw new HttpException('Événement introuvable', HttpStatus.NOT_FOUND);
     demand.event = event;
+    if(createDemandDto.tableSelections) {
+      const wantedIds = createDemandDto.tableSelections.map((s) => s.tableId);
+      const tables = await this.tableRepo.findBy({ id: In(wantedIds) });
 
+      const eventTableIds = new Set(event.tables.map((t) => t.id));
+      const invalid = tables.filter((t) => !eventTableIds.has(t.id));
+      if (invalid.length) {
+        throw new BadRequestException('Une ou plusieurs tables ne correspondent pas à cet événement.');
+      }
+      demand.tableItems = createDemandDto.tableSelections.map((sel) => {
+        const table = tables.find((t) => t.id === sel.tableId)!;
+        return this.itemRepo.create({
+          table,
+          quantity: sel.quantity,
+          // unitPrice: table.price ?? null, // si tu veux snapshot
+        });
+      });
+    }
     let savedDemand = await this.demandRepository.save(demand);
 
     const guestEntities = guests.map((g) => {
@@ -72,7 +102,7 @@ export class DemandService {
 
      savedDemand = await this.demandRepository.findOneOrFail({
       where: { slug: savedDemand.slug },
-      relations: ['guests', 'event'],
+      relations: ['guests', 'event', 'tableItems' ],
     });
 
     await this.mailService.notifyNewDemandToAdmin(savedDemand);
@@ -102,7 +132,7 @@ export class DemandService {
 
     const demands = await this.demandRepository.find({
       where,
-      relations: ['guests'],
+      relations: ['guests','tableItems'],
       order: { createdAt: 'DESC' },
     });
 
@@ -112,7 +142,7 @@ export class DemandService {
   async findOneBySlug(slug: string) {
     const demand = await this.demandRepository.findOne({
       where: { slug },
-      relations: ['guests', 'event','payment'],
+      relations: ['guests', 'event','payment', 'tableItems' ],
     });
 
     if (!demand) {

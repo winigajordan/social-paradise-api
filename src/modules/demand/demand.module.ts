@@ -6,13 +6,15 @@ import { Demand } from './entities/demand.entity';
 import { Guest } from '../guest/entities/guest.entity';
 import { MailModule } from '../../common/services/mail/mail.module';
 import { Event } from '../event/entities/event.entity';
+import { DemandTableItem } from './entities/demand-table-item.entity';
+import { Table } from '../table/entities/table.entity';
 
 @Module({
   controllers: [DemandController],
   providers: [DemandService],
   imports: [
     MailModule,
-    TypeOrmModule.forFeature([Demand, Guest, Event])
+    TypeOrmModule.forFeature([Demand, Guest, Event,DemandTableItem,Table])
   ],
   exports: [DemandService],
 })

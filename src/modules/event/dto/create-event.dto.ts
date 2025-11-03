@@ -9,6 +9,7 @@ import {
 import { Type } from 'class-transformer';
 import { CreatePriceDto } from '../../price/dto/create-price.dto';
 import { ApiProperty } from '@nestjs/swagger';
+import { CreateTableDto } from '../../table/dto/create-table.dto';
 
 export class CreateEventDto {
 
@@ -40,5 +41,11 @@ export class CreateEventDto {
   @ArrayMinSize(1)
   @ApiProperty({ isArray: true })
   prices: CreatePriceDto[];
+
+  @ValidateNested({ each: true })
+  @Type(() => CreateTableDto)
+  @ApiProperty({ isArray: true })
+  @IsOptional()
+  tables: CreateTableDto[];
 
 }

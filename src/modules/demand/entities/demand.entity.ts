@@ -13,6 +13,7 @@ import { Guest } from '../../guest/entities/guest.entity';
 import { Event } from '../../event/entities/event.entity';
 import { DemandType } from '../enum/demand-type.enum';
 import { Payment } from '../../payment/entities/payment.entity';
+import { DemandTableItem } from './demand-table-item.entity';
 
 @Entity()
 export class Demand {
@@ -53,5 +54,11 @@ export class Demand {
     nullable: true,
   })
   payment: Payment;
+
+  @OneToMany(() => DemandTableItem, (item) => item.demand, {
+    cascade: true, // permet de créer les items lors du save(demand)
+    eager: true,   // pratique à la lecture; retire si tu préfères charger à la demande
+  })
+  tableItems: DemandTableItem[];
 
 }

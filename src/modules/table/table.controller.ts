@@ -1,0 +1,6 @@
+import { Controller } from '@nestjs/common';
+@Controller('table')
+export class TableController {
+  constructor() {}
+
+}
