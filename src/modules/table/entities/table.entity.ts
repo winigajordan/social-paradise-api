@@ -2,9 +2,10 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  ManyToOne
+  ManyToOne, OneToMany,
 } from 'typeorm';
 import { Event } from '../../event/entities/event.entity';
+import { DemandTableItem } from '../../demand/entities/demand-table-item.entity';
 
 @Entity()
 export class Table {
@@ -22,4 +23,7 @@ export class Table {
 
   @ManyToOne(() => Event, event => event.prices, { onDelete: 'CASCADE' })
   event: Event;
+
+  @OneToMany(() => DemandTableItem, (item) => item.table)
+  demandItems: DemandTableItem[];
 }

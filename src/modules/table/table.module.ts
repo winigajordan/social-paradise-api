@@ -6,7 +6,7 @@ import { TableService } from './table.service';
 
 @Module({
   controllers : [TableController],
-  providers: [],
+  providers: [TableService],
   imports: [
     TypeOrmModule.forFeature([Table]),
     TableModule

@@ -44,8 +44,8 @@ export class CreateEventDto {
 
   @ValidateNested({ each: true })
   @Type(() => CreateTableDto)
-  @ArrayMinSize(1)
   @ApiProperty({ isArray: true })
+  @IsOptional()
   tables: CreateTableDto[];
 
 }
