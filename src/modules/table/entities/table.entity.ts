@@ -21,7 +21,7 @@ export class Table {
   @Column()
   capacity: number;
 
-  @ManyToOne(() => Event, event => event.prices, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Event, event => event.tables, { onDelete: 'CASCADE' })
   event: Event;
 
   @OneToMany(() => DemandTableItem, (item) => item.table)

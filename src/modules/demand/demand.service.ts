@@ -65,24 +65,24 @@ export class DemandService {
     if (!event)
       throw new HttpException('Événement introuvable', HttpStatus.NOT_FOUND);
     demand.event = event;
+    if(createDemandDto.tableSelections) {
+      const wantedIds = createDemandDto.tableSelections.map((s) => s.tableId);
+      const tables = await this.tableRepo.findBy({ id: In(wantedIds) });
 
-    console.log(createDemandDto.tableSelections);
-    const wantedIds = createDemandDto.tableSelections.map((s) => s.tableId);
-    const tables = await this.tableRepo.findBy({ id: In(wantedIds) });
-
-    const eventTableIds = new Set(event.tables.map((t) => t.id));
-    const invalid = tables.filter((t) => !eventTableIds.has(t.id));
-    if (invalid.length) {
-      throw new BadRequestException('Une ou plusieurs tables ne correspondent pas à cet événement.');
-    }
-    demand.tableItems = createDemandDto.tableSelections.map((sel) => {
-      const table = tables.find((t) => t.id === sel.tableId)!;
-      return this.itemRepo.create({
-        table,
-        quantity: sel.quantity,
-        // unitPrice: table.price ?? null, // si tu veux snapshot
+      const eventTableIds = new Set(event.tables.map((t) => t.id));
+      const invalid = tables.filter((t) => !eventTableIds.has(t.id));
+      if (invalid.length) {
+        throw new BadRequestException('Une ou plusieurs tables ne correspondent pas à cet événement.');
+      }
+      demand.tableItems = createDemandDto.tableSelections.map((sel) => {
+        const table = tables.find((t) => t.id === sel.tableId)!;
+        return this.itemRepo.create({
+          table,
+          quantity: sel.quantity,
+          // unitPrice: table.price ?? null, // si tu veux snapshot
+        });
       });
-    });
+    }
     let savedDemand = await this.demandRepository.save(demand);
 
     const guestEntities = guests.map((g) => {

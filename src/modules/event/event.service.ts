@@ -130,9 +130,9 @@ export class EventService {
       const newTables = dto.tables;
 
       // 1. Supprimer les prix absents de la nouvelle liste
-      const incomingIdsT  = newTables.filter(p => p.id).map(p => p.id);
+      /*const incomingIdsT  = newTables.filter(p => p.id).map(p => p.id);
       const toDeleteT = event.tables.filter(p => !incomingIdsT.includes(p.id));
-      await this.tableRepository.remove(toDeleteT);
+      await this.tableRepository.remove(toDeleteT);*/
 
       // 2. Mettre à jour ou créer les prix
       const updatedTables: Table[] = [];
