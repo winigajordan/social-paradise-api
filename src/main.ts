@@ -5,6 +5,9 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 
+import * as crypto from 'crypto';
+(global as any).crypto = crypto;
+
 async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, {cors: true});
