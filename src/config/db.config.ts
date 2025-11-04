@@ -1,3 +1,4 @@
+// src/config/db.config.ts
 import * as process from 'node:process';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
@@ -9,6 +10,8 @@ export default (): TypeOrmModuleOptions => ({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-  synchronize: true, // ❗️À désactiver en prod
+  synchronize: false, // ✅ désactivé
   autoLoadEntities: true,
+  // migrations: [__dirname + '/../database/migrations/*{.ts,.js}'], // utile si tu veux les lancer via Nest
+  // migrationsRun: process.env.NODE_ENV === 'production', // optionnel
 });
