@@ -6,6 +6,11 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "migration:create": "typeorm-ts-node-commonjs migration:create src/database/migrations/NewMigration",
+    "migration:generate": "typeorm-ts-node-commonjs migration:generate src/database/migrations/InitialSchema -d ./data-source.ts",
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d ./data-source.ts",
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d ./data-source.ts",
+    "migration:show": "typeorm-ts-node-commonjs migration:show -d ./data-source.ts",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -40,8 +45,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "sib-api-v3-sdk": "^8.5.0",
-    "swagger-ui-express": "^5.0.1",
-    "typeorm": "^0.3.25"
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -70,6 +74,8 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
+    "typeorm": "^0.3.27",
+    "typeorm-ts-node-commonjs": "^0.3.20",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
   },
