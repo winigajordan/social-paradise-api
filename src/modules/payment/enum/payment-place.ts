@@ -1,6 +1,7 @@
 export enum PaymentPlace {
   FRUIT_STORE = "FRUIT_STORE",
   HEMISPHERE = "HEMISPHERE",
+  IROKO_BEACH = "IROKO_BEACH",
   GROOV = "GROOV",
   FITLAB = "FITLAB",
 }
