@@ -9,6 +9,7 @@ export class DemandWithMainGuestDto {
   type: DemandType;
   numberOfGuests?: number;
   createdAt: Date;
+  guests ?: any[];
   mainGuest: {
     firstName: string;
     lastName: string;
@@ -36,6 +37,7 @@ export class DemandWithMainGuestDto {
       phoneNumber: mainGuest.phoneNumber,
       age: mainGuest.age,
     };
+    this.guests = demand.guests;
   }
 }
 
