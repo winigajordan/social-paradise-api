@@ -1,8 +1,8 @@
-import { BadRequestException, HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateDemandDto } from './dto/create-demand.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Demand } from './entities/demand.entity';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Guest } from '../guest/entities/guest.entity';
 import { MailService } from '../../common/services/mail/mail.service';
 import { Event } from '../event/entities/event.entity';
@@ -13,6 +13,7 @@ import { DemandStatus } from './enum/demand-status.enum';
 import { UpdateDemandStatusDto } from './dto/update-demand-status.dto';
 import { Table } from '../table/entities/table.entity';
 import { DemandTableItem } from './entities/demand-table-item.entity';
+import { Payment } from '../payment/entities/payment.entity';
 
 @Injectable()
 export class DemandService {
@@ -31,8 +32,13 @@ export class DemandService {
   @InjectRepository(DemandTableItem)
   private readonly itemRepo: Repository<DemandTableItem>;
 
+  @InjectRepository(Payment)
+  private readonly paymentRepository: Repository<Payment>;
+
   @Inject(MailService)
   private readonly mailService: MailService;
+
+  private readonly dataSource: DataSource;
 
   async create(createDemandDto: CreateDemandDto) {
     const guests = createDemandDto.guests;
@@ -268,6 +274,73 @@ export class DemandService {
       totalDemands: Number(row.totalDemands),
       totalParticipants: Number(row.totalParticipants),
     }));
+  }
+
+  /*async deleteBySlug(slug: string): Promise<void> {
+    const demand = await this.demandRepository.findOne({
+      where: { slug },
+      relations: ['payment'],
+    });
+
+    if (!demand) {
+      throw new NotFoundException('Demand not found');
+    }
+
+    const demandId = demand.id;
+
+    // 2) Supprimer les dépendances (défensif, même si certaines FKs sont en CASCADE)
+
+    // 2a) Items de tables
+    await this.itemRepo.delete({ demand: { id: demandId } });
+
+    // 2b) Guests
+    await this.guestRepository.delete({ demand: { id: demandId } });
+
+    // 2c) Payment
+    if (demand.payment?.id) {
+      await this.paymentRepository.delete(demand.payment.id);
+    }
+
+    // 3) Supprimer la demande elle-même
+    await this.demandRepository.delete(demandId);
+  }*/
+
+  async deleteBySlug(slug: string): Promise<void> {
+    await this.demandRepository.manager.transaction(async (manager) => {
+      // On récupère les repositories "scopés" à la transaction
+      const demandRepo   = manager.getRepository(Demand);
+      const itemRepo     = manager.getRepository(DemandTableItem);
+      const guestRepo    = manager.getRepository(Guest);
+      const paymentRepo  = manager.getRepository(Payment);
+
+      // 1) Charger la demande + paiement éventuel
+      const demand = await demandRepo.findOne({
+        where: { slug },
+        relations: ['payment'],
+      });
+
+      if (!demand) {
+        throw new NotFoundException('Demand not found');
+      }
+
+      const demandId = demand.id;
+
+      // 2) Supprimer les dépendances
+
+      // 2a) Items de tables
+      await itemRepo.delete({ demand: { id: demandId } });
+
+      // 2b) Guests
+      await guestRepo.delete({ demand: { id: demandId } });
+
+      // 2c) Payment
+      if (demand.payment?.id) {
+        await paymentRepo.delete(demand.payment.id);
+      }
+
+      // 3) Supprimer la demande elle-même
+      await demandRepo.delete(demandId);
+    });
   }
 
 

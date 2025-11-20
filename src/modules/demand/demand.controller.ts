@@ -5,12 +5,14 @@ import {
   Query,
   Param,
   Get,
-  Patch,
+  Patch, Delete,
 } from '@nestjs/common';
 import { DemandService } from './demand.service';
 import { CreateDemandDto } from './dto/create-demand.dto';
 import { DemandFilterDto } from './dto/demand-filter.dto';
 import { UpdateDemandStatusDto } from './dto/update-demand-status.dto';
+import { Transaction } from 'typeorm';
+
 
 @Controller('demand')
 export class DemandController {
@@ -47,6 +49,10 @@ export class DemandController {
     return this.demandService.getDemandStatsByEvent(slug);
   }
 
+  @Delete(':slug')
+  remove(@Param('slug') slug: string) {
+    return this.demandService.deleteBySlug(slug);
+  }
 
 
 }
