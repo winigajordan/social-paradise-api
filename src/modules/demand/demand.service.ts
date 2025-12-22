@@ -186,7 +186,7 @@ export class DemandService {
         `Demande avec le slug ${slug} introuvable.`,
         HttpStatus.NOT_FOUND
       )
-
+    const baseStatus = demand.status;
     demand.status = dto.status;
     await this.demandRepository.save(demand);
 
@@ -198,6 +198,11 @@ export class DemandService {
         break;
       case DemandStatus.PAYEE:
         await this.sendQrCodes(demand);
+        break;
+      case DemandStatus.OFFERT:
+        if(baseStatus!=DemandStatus.PAYEE){
+          await this.sendQrCodes(demand);
+        }
         break;
     }
 

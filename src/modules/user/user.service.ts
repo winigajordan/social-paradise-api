@@ -34,4 +34,26 @@ export class UserService {
     });
   }
 
+  async findAll() {
+    return this.userRepository.find();
+  }
+
+  //Modify user role
+  async updateRole(id: number, role: string) {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new BadRequestException(`User not found`);
+    }
+    user.role = role;
+    return this.userRepository.save(user);
+  }
+
+  async delete(id: number) {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new BadRequestException(`User not found`);
+    }
+    return this.userRepository.remove(user);
+  }
+
 }

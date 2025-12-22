@@ -28,15 +28,22 @@ export class GuestService {
       );
     }
     console.log(guest);
-    if (guest.demand.status === DemandStatus.PAYEE) {
+    if (guest.demand.status === DemandStatus.PAYEE || guest.demand.status === DemandStatus.OFFERT) {
       if(guest.state) {
-        throw new HttpException(
-          'Ce code QR a déjà été utilisé.',
-          HttpStatus.BAD_REQUEST
-        );
+        return {
+          guest: guest,
+          status: 'ALREADY_USED', // A machine-readable status code for the frontend
+          message: 'Ce code QR a déjà été utilisé.', // The French message for display
+        };
       }
       guest.state = true;
-      return await this.guestRepository.save(guest);
+      const validatedGuest = await this.guestRepository.save(guest);
+
+      return {
+        guest: validatedGuest,
+        status: 'VALIDATED', // Status for successful validation
+        message: 'Code QR validé avec succès.',
+      };
     }
 
     return null;

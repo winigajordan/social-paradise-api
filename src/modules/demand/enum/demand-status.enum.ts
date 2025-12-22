@@ -4,4 +4,5 @@ export enum   DemandStatus {
   REFUSEE = 'REFUSEE',
   PAYEE = 'PAYEE',
   PAIEMENT_NOTIFIE = 'PAIEMENT_NOTIFIE',
+  OFFERT = 'OFFERT'
 }
