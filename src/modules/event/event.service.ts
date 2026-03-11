@@ -21,7 +21,18 @@ export class EventService {
 
   async create(createEventDto: CreateEventDto) {
 
-    const { name, date, prices, tables, location, description, coverImage } = createEventDto;
+    const {
+      name,
+      date,
+      prices,
+      tables,
+      location,
+      description,
+      coverImage,
+      paymentMethods,
+      allowCash,
+      cashPlacesConfig,
+    } = createEventDto;
 
     const event = this.eventRepository.create({
       name,
@@ -30,7 +41,10 @@ export class EventService {
       coverImage,
       date: new Date(date),
       prices: prices,
-      tables: tables
+      tables: tables,
+      paymentMethods,
+      allowCash: allowCash ?? true,
+      cashPlacesConfig,
     });
     const savedEvent = await this.eventRepository.save(event);
 
@@ -90,6 +104,9 @@ export class EventService {
     if (dto.location) event.location = dto.location;
     if (dto.description) event.description = dto.description;
     if (dto.date) event.date = new Date(dto.date);
+    if (dto.paymentMethods) event.paymentMethods = dto.paymentMethods;
+    if (dto.allowCash !== undefined) event.allowCash = dto.allowCash;
+    if (dto.cashPlacesConfig) event.cashPlacesConfig = dto.cashPlacesConfig;
 
     // Gestion des prix si présents
     if (dto.prices) {

@@ -8,6 +8,7 @@ import {
 import { Demand } from '../../demand/entities/demand.entity';
 import { Price } from '../../price/entities/price.entity';
 import { Table } from '../../table/entities/table.entity';
+import { PaymentCanal } from '../../payment/enum/payment-canal.enum';
 
 @Entity()
 export class Event {
@@ -42,5 +43,30 @@ export class Event {
 
   @OneToMany(() => Table, table => table.event, { cascade: true })
   tables: Table[];
+
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+  })
+  paymentMethods?: {
+    name: string;
+    phoneNumber: string;
+    canal?: PaymentCanal | string;
+  }[];
+
+  @Column({
+    default: true,
+  })
+  allowCash: boolean;
+
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+  })
+  cashPlacesConfig?: {
+    name: string;
+    address: string;
+    mapUrl?: string;
+  }[];
 
 }
