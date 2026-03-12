@@ -3,12 +3,14 @@ import {
   PrimaryGeneratedColumn,
   Column,
   OneToMany,
-  Generated
+  Generated,
 } from 'typeorm';
 import { Demand } from '../../demand/entities/demand.entity';
 import { Price } from '../../price/entities/price.entity';
 import { Table } from '../../table/entities/table.entity';
 import { PaymentCanal } from '../../payment/enum/payment-canal.enum';
+import { EventExpense } from '../entities/event-expense.entity';
+import { EventIncome } from '../entities/event-income.entity';
 
 @Entity()
 export class Event {
@@ -45,6 +47,12 @@ export class Event {
   tables: Table[];
 
   @Column({
+    type: 'float',
+    default: 0,
+  })
+  initialBalance: number;
+
+  @Column({
     type: 'jsonb',
     nullable: true,
   })
@@ -68,5 +76,11 @@ export class Event {
     address: string;
     mapUrl?: string;
   }[];
+
+  @OneToMany(() => EventExpense, expense => expense.event, { cascade: true })
+  expenses: EventExpense[];
+
+  @OneToMany(() => EventIncome, income => income.event, { cascade: true })
+  incomes: EventIncome[];
 
 }

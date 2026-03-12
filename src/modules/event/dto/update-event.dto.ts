@@ -38,6 +38,10 @@ export class UpdateEventDto {
   @IsOptional()
   coverImage : string;
 
+  @ApiProperty({ example: 0, required: false, description: 'Solde initial de l’événement' })
+  @IsOptional()
+  initialBalance?: number;
+
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreatePriceDto)

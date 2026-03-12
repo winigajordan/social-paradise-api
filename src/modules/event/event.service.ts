@@ -6,6 +6,10 @@ import { Event } from './entities/event.entity';
 import { Price } from '../price/entities/price.entity';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { Table } from '../table/entities/table.entity';
+import { EventExpense } from './entities/event-expense.entity';
+import { EventIncome } from './entities/event-income.entity';
+import { Payment } from '../payment/entities/payment.entity';
+import { DemandStatus } from '../demand/enum/demand-status.enum';
 
 @Injectable()
 export class EventService {
@@ -18,6 +22,15 @@ export class EventService {
 
   @InjectRepository(Table)
   private tableRepository: Repository<Table>
+
+  @InjectRepository(EventExpense)
+  private expenseRepository: Repository<EventExpense>
+
+  @InjectRepository(EventIncome)
+  private incomeRepository: Repository<EventIncome>
+
+  @InjectRepository(Payment)
+  private paymentRepository: Repository<Payment>
 
   async create(createEventDto: CreateEventDto) {
 
@@ -45,6 +58,7 @@ export class EventService {
       paymentMethods,
       allowCash: allowCash ?? true,
       cashPlacesConfig,
+      initialBalance: createEventDto.initialBalance ?? 0,
     });
     const savedEvent = await this.eventRepository.save(event);
 
@@ -107,6 +121,9 @@ export class EventService {
     if (dto.paymentMethods) event.paymentMethods = dto.paymentMethods;
     if (dto.allowCash !== undefined) event.allowCash = dto.allowCash;
     if (dto.cashPlacesConfig) event.cashPlacesConfig = dto.cashPlacesConfig;
+    if (dto.initialBalance !== undefined && dto.initialBalance !== null) {
+      event.initialBalance = dto.initialBalance;
+    }
 
     // Gestion des prix si présents
     if (dto.prices) {
@@ -185,5 +202,91 @@ export class EventService {
     });
   }
 
+  async getAccounting(slug: string) {
+    const event = await this.eventRepository.findOne({ where: { slug } });
+
+    if (!event) {
+      throw new HttpException(`Événement avec le slug ${slug} introuvable.`, HttpStatus.NOT_FOUND);
+    }
+
+    const [{ totalExpenses = 0 }] = await this.expenseRepository
+      .createQueryBuilder('expense')
+      .select('COALESCE(SUM(expense.amount), 0)', 'totalExpenses')
+      .where('expense.eventId = :eventId', { eventId: event.id })
+      .getRawMany();
+
+    const [{ totalIncomesManual = 0 }] = await this.incomeRepository
+      .createQueryBuilder('income')
+      .select('COALESCE(SUM(income.amount), 0)', 'totalIncomesManual')
+      .where('income.eventId = :eventId', { eventId: event.id })
+      .getRawMany();
+
+    const { totalPaidFromDemands = 0 } = await this.paymentRepository
+      .createQueryBuilder('payment')
+      .innerJoin('payment.demand', 'demand')
+      .innerJoin('demand.event', 'event')
+      .select('COALESCE(SUM(payment.amount), 0)', 'totalPaidFromDemands')
+      .where('event.id = :eventId', { eventId: event.id })
+      .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
+      .getRawOne();
+
+    const initialBalance = event.initialBalance ?? 0;
+
+    const expenses = await this.expenseRepository.find({
+      where: { event: { id: event.id } },
+      order: { createdAt: 'DESC' },
+    });
+
+    const incomes = await this.incomeRepository.find({
+      where: { event: { id: event.id } },
+      order: { createdAt: 'DESC' },
+    });
+
+    const currentBalance =
+      initialBalance +
+      Number(totalIncomesManual) +
+      Number(totalPaidFromDemands) -
+      Number(totalExpenses);
+
+    return {
+      initialBalance,
+      totalExpenses: Number(totalExpenses),
+      totalIncomesManual: Number(totalIncomesManual),
+      totalPaidFromDemands: Number(totalPaidFromDemands),
+      currentBalance,
+      expenses,
+      incomes,
+    };
+  }
+
+  async addExpense(slug: string, payload: { label: string; amount: number; note?: string }) {
+    const event = await this.eventRepository.findOne({ where: { slug } });
+    if (!event) {
+      throw new HttpException(`Événement avec le slug ${slug} introuvable.`, HttpStatus.NOT_FOUND);
+    }
+
+    const expense = this.expenseRepository.create({
+      event,
+      label: payload.label,
+      amount: payload.amount,
+      note: payload.note,
+    });
+    return this.expenseRepository.save(expense);
+  }
+
+  async addIncome(slug: string, payload: { label: string; amount: number; note?: string }) {
+    const event = await this.eventRepository.findOne({ where: { slug } });
+    if (!event) {
+      throw new HttpException(`Événement avec le slug ${slug} introuvable.`, HttpStatus.NOT_FOUND);
+    }
+
+    const income = this.incomeRepository.create({
+      event,
+      label: payload.label,
+      amount: payload.amount,
+      note: payload.note,
+    });
+    return this.incomeRepository.save(income);
+  }
 
 }

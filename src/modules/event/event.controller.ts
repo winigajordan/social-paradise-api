@@ -32,11 +32,29 @@ export class EventController {
   async update(
     @Param('slug') slug: string,
     @Body() dto: UpdateEventDto,
-  )  {
+  ) {
     return this.eventService.update(slug, dto);
   }
 
+  @Get(':slug/accounting')
+  async getAccounting(@Param('slug') slug: string) {
+    return this.eventService.getAccounting(slug);
+  }
 
+  @Post(':slug/expenses')
+  async addExpense(
+    @Param('slug') slug: string,
+    @Body() payload: { label: string; amount: number; note?: string },
+  ) {
+    return this.eventService.addExpense(slug, payload);
+  }
 
+  @Post(':slug/incomes')
+  async addIncome(
+    @Param('slug') slug: string,
+    @Body() payload: { label: string; amount: number; note?: string },
+  ) {
+    return this.eventService.addIncome(slug, payload);
+  }
 
 }
