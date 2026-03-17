@@ -63,6 +63,11 @@ export class CreateEventDto {
   @IsOptional()
   coverImage : string;
 
+  @ApiProperty({ example: true, required: false, default: true, description: 'Événement actif (demandes ouvertes)' })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
   @ApiProperty({ example: 0, required: false, description: 'Solde initial de l’événement' })
   @IsOptional()
   initialBalance?: number;

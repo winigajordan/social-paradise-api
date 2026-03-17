@@ -61,4 +61,7 @@ export class Demand {
   })
   tableItems: DemandTableItem[];
 
+  @Column({ type: 'float', nullable: true })
+  discountAmount?: number;
+
 }

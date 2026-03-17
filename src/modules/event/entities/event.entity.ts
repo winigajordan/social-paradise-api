@@ -37,6 +37,9 @@ export class Event {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
+  @Column({ default: true })
+  isActive: boolean;
+
   @OneToMany(() => Demand, demand => demand.event)
   demands: Demand[];
 

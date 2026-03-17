@@ -24,19 +24,25 @@ export class UpdateEventDto {
   @IsDateString()
   date?: string;
 
+  @IsOptional()
   @IsString()
   @ApiProperty({ example: 'Localisation' })
-  location : string
+  location?: string
 
   @IsString()
   @ApiProperty({ example: 'Description' })
   @IsOptional()
-  description : string;
+  description?: string;
 
   @IsUrl()
   @ApiProperty({ example: 'Description' })
   @IsOptional()
-  coverImage : string;
+  coverImage?: string;
+
+  @ApiProperty({ example: true, required: false, description: 'Événement actif (demandes ouvertes)' })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 
   @ApiProperty({ example: 0, required: false, description: 'Solde initial de l’événement' })
   @IsOptional()

@@ -12,6 +12,7 @@ import { CreateDemandDto } from './dto/create-demand.dto';
 import { DemandFilterDto } from './dto/demand-filter.dto';
 import { UpdateDemandStatusDto } from './dto/update-demand-status.dto';
 import { Transaction } from 'typeorm';
+import { UpdateDemandDiscountDto } from './dto/update-demand-discount.dto';
 
 
 @Controller('demand')
@@ -42,6 +43,14 @@ export class DemandController {
     @Body() dto: UpdateDemandStatusDto,
   ){
     return this.demandService.updateStatus(slug, dto);
+  }
+
+  @Patch(':slug/discount')
+  async updateDiscount(
+    @Param('slug') slug: string,
+    @Body() dto: UpdateDemandDiscountDto,
+  ) {
+    return this.demandService.updateDiscount(slug, dto);
   }
 
   @Get('stats/:slug')

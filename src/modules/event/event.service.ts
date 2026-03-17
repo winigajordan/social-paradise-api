@@ -45,6 +45,7 @@ export class EventService {
       paymentMethods,
       allowCash,
       cashPlacesConfig,
+      isActive,
     } = createEventDto;
 
     const event = this.eventRepository.create({
@@ -52,6 +53,7 @@ export class EventService {
       location,
       description,
       coverImage,
+      isActive: isActive ?? true,
       date: new Date(date),
       prices: prices,
       tables: tables,
@@ -121,6 +123,7 @@ export class EventService {
     if (dto.paymentMethods) event.paymentMethods = dto.paymentMethods;
     if (dto.allowCash !== undefined) event.allowCash = dto.allowCash;
     if (dto.cashPlacesConfig) event.cashPlacesConfig = dto.cashPlacesConfig;
+    if (dto.isActive !== undefined) event.isActive = dto.isActive;
     if (dto.initialBalance !== undefined && dto.initialBalance !== null) {
       event.initialBalance = dto.initialBalance;
     }

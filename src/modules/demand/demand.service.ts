@@ -14,6 +14,7 @@ import { UpdateDemandStatusDto } from './dto/update-demand-status.dto';
 import { Table } from '../table/entities/table.entity';
 import { DemandTableItem } from './entities/demand-table-item.entity';
 import { Payment } from '../payment/entities/payment.entity';
+import { UpdateDemandDiscountDto } from './dto/update-demand-discount.dto';
 
 @Injectable()
 export class DemandService {
@@ -206,6 +207,25 @@ export class DemandService {
         break;
     }
 
+  }
+
+  async updateDiscount(slug: string, dto: UpdateDemandDiscountDto) {
+    const demand = await this.demandRepository.findOne({ where: { slug } });
+
+    if (!demand) {
+      throw new HttpException(
+        `Demande avec le slug ${slug} introuvable.`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const discount = dto.discountAmount ?? 0;
+    if (discount < 0) {
+      throw new BadRequestException('Le discount ne peut pas être négatif.');
+    }
+
+    demand.discountAmount = discount;
+    await this.demandRepository.save(demand);
   }
 
   async validateDemand(demand: Demand) {
