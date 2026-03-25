@@ -292,4 +292,38 @@ export class EventService {
     return this.incomeRepository.save(income);
   }
 
+  async deleteExpense(slug: string, expenseId: number) {
+    const event = await this.eventRepository.findOne({ where: { slug } });
+    if (!event) {
+      throw new HttpException(`Événement avec le slug ${slug} introuvable.`, HttpStatus.NOT_FOUND);
+    }
+
+    const expense = await this.expenseRepository.findOne({
+      where: { id: expenseId, event: { id: event.id } },
+    });
+
+    if (!expense) {
+      throw new HttpException(`Dépense introuvable.`, HttpStatus.NOT_FOUND);
+    }
+
+    await this.expenseRepository.remove(expense);
+  }
+
+  async deleteIncome(slug: string, incomeId: number) {
+    const event = await this.eventRepository.findOne({ where: { slug } });
+    if (!event) {
+      throw new HttpException(`Événement avec le slug ${slug} introuvable.`, HttpStatus.NOT_FOUND);
+    }
+
+    const income = await this.incomeRepository.findOne({
+      where: { id: incomeId, event: { id: event.id } },
+    });
+
+    if (!income) {
+      throw new HttpException(`Entrée introuvable.`, HttpStatus.NOT_FOUND);
+    }
+
+    await this.incomeRepository.remove(income);
+  }
+
 }

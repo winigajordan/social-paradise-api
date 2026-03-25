@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param,  Put } from '@nestjs/common';
+import { Controller, Delete, Get, Post, Body, Param, Put } from '@nestjs/common';
 import { EventService } from './event.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -55,6 +55,16 @@ export class EventController {
     @Body() payload: { label: string; amount: number; note?: string },
   ) {
     return this.eventService.addIncome(slug, payload);
+  }
+
+  @Delete(':slug/expenses/:id')
+  async deleteExpense(@Param('slug') slug: string, @Param('id') id: string) {
+    return this.eventService.deleteExpense(slug, Number(id));
+  }
+
+  @Delete(':slug/incomes/:id')
+  async deleteIncome(@Param('slug') slug: string, @Param('id') id: string) {
+    return this.eventService.deleteIncome(slug, Number(id));
   }
 
 }
