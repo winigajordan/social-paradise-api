@@ -368,5 +368,59 @@ export class DemandService {
     });
   }
 
+  async removeGuestFromGroupDemand(demandSlug: string, guestId: number): Promise<void> {
+    if (!guestId || Number.isNaN(Number(guestId))) {
+      throw new BadRequestException('guestId invalide.');
+    }
+
+    await this.demandRepository.manager.transaction(async (manager) => {
+      const demandRepo = manager.getRepository(Demand);
+      const guestRepo = manager.getRepository(Guest);
+
+      const demand = await demandRepo.findOne({
+        where: { slug: demandSlug },
+        relations: ['guests'],
+      });
+
+      if (!demand) {
+        throw new HttpException(
+          `Demande avec le slug ${demandSlug} introuvable.`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      if (demand.status === DemandStatus.PAYEE || demand.status === DemandStatus.OFFERT) {
+        throw new BadRequestException("Impossible de modifier les invités : la demande est déjà payée/offerte.");
+      }
+
+      if (demand.type !== DemandType.GROUP) {
+        throw new BadRequestException("Suppression d'invité autorisée uniquement pour une demande de groupe.");
+      }
+
+      const guests = Array.isArray(demand.guests) ? demand.guests : [];
+      if (guests.length <= 1) {
+        throw new BadRequestException("Impossible de supprimer : la demande doit garder au moins un invité.");
+      }
+
+      const guest = guests.find(g => Number(g.id) === Number(guestId));
+      if (!guest) {
+        throw new HttpException("Invité introuvable pour cette demande.", HttpStatus.NOT_FOUND);
+      }
+
+      if (guest.isMainGuest) {
+        throw new BadRequestException("Impossible de supprimer l'invité principal.");
+      }
+
+      await guestRepo.delete({ id: guest.id, demand: { id: demand.id } });
+
+      // Recharger le nombre d'invités restants
+      const remaining = await guestRepo.count({ where: { demand: { id: demand.id } } });
+      if (remaining <= 1) {
+        demand.type = DemandType.UNIQUE;
+        await demandRepo.save(demand);
+      }
+    });
+  }
+
 
 }

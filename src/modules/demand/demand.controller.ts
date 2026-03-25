@@ -63,5 +63,13 @@ export class DemandController {
     return this.demandService.deleteBySlug(slug);
   }
 
+  @Delete(':slug/guests/:guestId')
+  removeGuestFromDemand(
+    @Param('slug') slug: string,
+    @Param('guestId') guestId: string,
+  ) {
+    return this.demandService.removeGuestFromGroupDemand(slug, Number(guestId));
+  }
+
 
 }
