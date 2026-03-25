@@ -10,6 +10,8 @@ import { EventExpense } from './entities/event-expense.entity';
 import { EventIncome } from './entities/event-income.entity';
 import { Payment } from '../payment/entities/payment.entity';
 import { DemandStatus } from '../demand/enum/demand-status.enum';
+import { Demand } from '../demand/entities/demand.entity';
+import { Guest } from '../guest/entities/guest.entity';
 
 @Injectable()
 export class EventService {
@@ -31,6 +33,12 @@ export class EventService {
 
   @InjectRepository(Payment)
   private paymentRepository: Repository<Payment>
+
+  @InjectRepository(Demand)
+  private demandRepository: Repository<Demand>
+
+  @InjectRepository(Guest)
+  private guestRepository: Repository<Guest>
 
   async create(createEventDto: CreateEventDto) {
 
@@ -206,7 +214,10 @@ export class EventService {
   }
 
   async getAccounting(slug: string) {
-    const event = await this.eventRepository.findOne({ where: { slug } });
+    const event = await this.eventRepository.findOne({
+      where: { slug },
+      relations: ['prices'],
+    });
 
     if (!event) {
       throw new HttpException(`Événement avec le slug ${slug} introuvable.`, HttpStatus.NOT_FOUND);
@@ -245,6 +256,45 @@ export class EventService {
       order: { createdAt: 'DESC' },
     });
 
+    // -------- tickets vendus par tarif (par période) — PAYÉE uniquement
+    // Affectation par date du paiement associé (payment.date)
+    const soldRows = await this.demandRepository
+      .createQueryBuilder('demand')
+      .innerJoin('demand.payment', 'payment')
+      .leftJoin('demand.guests', 'guest')
+      .select('demand.id', 'demandId')
+      .addSelect('payment.date', 'paidAt')
+      .addSelect('COUNT(guest.id)', 'tickets')
+      .where('demand.eventId = :eventId', { eventId: event.id })
+      .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
+      .groupBy('demand.id')
+      .addGroupBy('payment.date')
+      .getRawMany();
+
+    const prices = (event.prices ?? []).slice().sort((a: any, b: any) => {
+      const at = new Date(a.startDate).getTime();
+      const bt = new Date(b.startDate).getTime();
+      return at - bt;
+    });
+
+    const ticketsByPrice = prices.map((p: any) => {
+      const from = new Date(p.startDate);
+      const to = new Date(p.endDate);
+      const ticketsSold = soldRows.reduce((acc: number, r: any) => {
+        const dt = new Date(r.paidAt);
+        const inRange = dt.getTime() >= from.getTime() && dt.getTime() <= to.getTime();
+        return acc + (inRange ? Number(r.tickets || 0) : 0);
+      }, 0);
+      return {
+        priceId: p.id,
+        name: p.name ?? null,
+        amount: Number(p.amount ?? 0),
+        startDate: p.startDate,
+        endDate: p.endDate,
+        ticketsSold,
+      };
+    });
+
     const currentBalance =
       initialBalance +
       Number(totalIncomesManual) +
@@ -257,6 +307,7 @@ export class EventService {
       totalIncomesManual: Number(totalIncomesManual),
       totalPaidFromDemands: Number(totalPaidFromDemands),
       currentBalance,
+      ticketsByPrice,
       expenses,
       incomes,
     };
