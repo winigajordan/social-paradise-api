@@ -256,39 +256,47 @@ export class EventService {
       order: { createdAt: 'DESC' },
     });
 
-    // -------- tickets vendus par tarif (par période) — PAYÉE uniquement
-    // Affectation par date du paiement associé (payment.date)
-    const soldRows = await this.demandRepository
+    // IMPORTANT:
+    // - `payment.date` est un `timestamp without time zone`
+    // - `price.startDate/endDate` sont des `date`
+    // Faire des `new Date(...)` et comparer en JS dépend du fuseau du serveur (local vs prod).
+    // On ramène tout au niveau "date" en SQL pour avoir un résultat identique partout.
+
+    const prices = await this.priceRepository
+      .createQueryBuilder('price')
+      .select('price.id', 'id')
+      .addSelect('price.name', 'name')
+      .addSelect('price.amount', 'amount')
+      // Forcer un format stable, sinon `getRawMany()` peut renvoyer Date|string selon driver/options.
+      .addSelect("to_char(price.startDate, 'YYYY-MM-DD')", 'startDate')
+      .addSelect("to_char(price.endDate, 'YYYY-MM-DD')", 'endDate')
+      .where('price.eventId = :eventId', { eventId: event.id })
+      .orderBy('price.startDate', 'ASC')
+      .getRawMany();
+
+    const soldByDateRows = await this.demandRepository
       .createQueryBuilder('demand')
       .innerJoin('demand.payment', 'payment')
       .leftJoin('demand.guests', 'guest')
-      .select('demand.id', 'demandId')
-      .addSelect('payment.date', 'paidAt')
+      // Idem: format "YYYY-MM-DD" stable
+      .select("to_char(payment.date::date, 'YYYY-MM-DD')", 'paidDate')
       .addSelect('COUNT(guest.id)', 'tickets')
       .where('demand.eventId = :eventId', { eventId: event.id })
       .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
-      .groupBy('demand.id')
-      .addGroupBy('payment.date')
+      .groupBy("payment.date::date")
       .getRawMany();
 
-    const prices = (event.prices ?? []).slice().sort((a: any, b: any) => {
-      const at = new Date(a.startDate).getTime();
-      const bt = new Date(b.startDate).getTime();
-      return at - bt;
-    });
-
-    const ticketsByPrice = prices.map((p: any) => {
-      const from = new Date(p.startDate);
-      // Inclure tous les paiements du "dernier jour" (borne de fin = fin de journée)
-      const to = new Date(p.endDate);
-      to.setHours(23, 59, 59, 999);
-      const ticketsSold = soldRows.reduce((acc: number, r: any) => {
-        const dt = new Date(r.paidAt);
-        const inRange = dt.getTime() >= from.getTime() && dt.getTime() <= to.getTime();
+    const ticketsByPrice = (prices ?? []).map((p: any) => {
+      const from = String(p.startDate);
+      const to = String(p.endDate);
+      const ticketsSold = (soldByDateRows ?? []).reduce((acc: number, r: any) => {
+        const paidDate = String(r.paidDate);
+        const inRange = paidDate >= from && paidDate <= to; // "YYYY-MM-DD" => comparaison lexicographique OK
         return acc + (inRange ? Number(r.tickets || 0) : 0);
       }, 0);
+
       return {
-        priceId: p.id,
+        priceId: Number(p.id),
         name: p.name ?? null,
         amount: Number(p.amount ?? 0),
         startDate: p.startDate,
