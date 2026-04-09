@@ -257,18 +257,21 @@ export class EventService {
     });
 
     // -------- tickets vendus par tarif (par période) — PAYÉE uniquement
-    // IMPORTANT: comparaison "date-only" en SQL (payment.date::date) pour éviter les écarts de timezone (local vs prod)
+    // IMPORTANT:
+    // - On compare en "date-only" côté SQL (pas en JS) pour éviter les écarts local vs prod
+    // - On force le fuseau horaire métier (Africa/Dakar) avant de caster en date,
+    //   sinon en prod (souvent UTC) un paiement du "jour J" peut devenir "J-1" et tomber dans le tarif précédent.
     const soldRows = await this.demandRepository
       .createQueryBuilder('demand')
       .innerJoin('demand.payment', 'payment')
       .leftJoin('demand.guests', 'guest')
       .select('demand.id', 'demandId')
-      .addSelect('payment.date::date', 'paidDate')
+      .addSelect("(payment.date AT TIME ZONE 'Africa/Dakar')::date", 'paidDate')
       .addSelect('COUNT(guest.id)', 'tickets')
       .where('demand.eventId = :eventId', { eventId: event.id })
       .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
       .groupBy('demand.id')
-      .addGroupBy('payment.date::date')
+      .addGroupBy("(payment.date AT TIME ZONE 'Africa/Dakar')::date")
       .getRawMany();
 
     const prices = (event.prices ?? []).slice().sort((a: any, b: any) => {
