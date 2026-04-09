@@ -257,18 +257,18 @@ export class EventService {
     });
 
     // -------- tickets vendus par tarif (par période) — PAYÉE uniquement
-    // Affectation par date du paiement associé (payment.date)
+    // IMPORTANT: comparaison "date-only" en SQL (payment.date::date) pour éviter les écarts de timezone (local vs prod)
     const soldRows = await this.demandRepository
       .createQueryBuilder('demand')
       .innerJoin('demand.payment', 'payment')
       .leftJoin('demand.guests', 'guest')
       .select('demand.id', 'demandId')
-      .addSelect('payment.date', 'paidAt')
+      .addSelect('payment.date::date', 'paidDate')
       .addSelect('COUNT(guest.id)', 'tickets')
       .where('demand.eventId = :eventId', { eventId: event.id })
       .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
       .groupBy('demand.id')
-      .addGroupBy('payment.date')
+      .addGroupBy('payment.date::date')
       .getRawMany();
 
     const prices = (event.prices ?? []).slice().sort((a: any, b: any) => {
@@ -277,14 +277,19 @@ export class EventService {
       return at - bt;
     });
 
+    const toYmd = (d: any): string => {
+      if (!d) return '';
+      if (typeof d === 'string') return d.slice(0, 10);
+      if (d instanceof Date) return d.toISOString().slice(0, 10);
+      return new Date(d).toISOString().slice(0, 10);
+    };
+
     const ticketsByPrice = prices.map((p: any) => {
-      const from = new Date(p.startDate);
-      // Inclure tous les paiements du "dernier jour" (borne de fin = fin de journée)
-      const to = new Date(p.endDate);
-      to.setHours(23, 59, 59, 999);
+      const fromYmd = toYmd(p.startDate);
+      const toYmdStr = toYmd(p.endDate);
       const ticketsSold = soldRows.reduce((acc: number, r: any) => {
-        const dt = new Date(r.paidAt);
-        const inRange = dt.getTime() >= from.getTime() && dt.getTime() <= to.getTime();
+        const paidYmd = String(r.paidDate ?? '').slice(0, 10);
+        const inRange = paidYmd >= fromYmd && paidYmd <= toYmdStr;
         return acc + (inRange ? Number(r.tickets || 0) : 0);
       }, 0);
       return {
