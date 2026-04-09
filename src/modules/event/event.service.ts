@@ -257,21 +257,18 @@ export class EventService {
     });
 
     // -------- tickets vendus par tarif (par période) — PAYÉE uniquement
-    // IMPORTANT:
-    // - On compare en "date-only" côté SQL (pas en JS) pour éviter les écarts local vs prod
-    // - On force le fuseau horaire métier (Africa/Dakar) avant de caster en date,
-    //   sinon en prod (souvent UTC) un paiement du "jour J" peut devenir "J-1" et tomber dans le tarif précédent.
+    // Affectation par date du paiement associé (payment.date)
     const soldRows = await this.demandRepository
       .createQueryBuilder('demand')
       .innerJoin('demand.payment', 'payment')
       .leftJoin('demand.guests', 'guest')
       .select('demand.id', 'demandId')
-      .addSelect("(payment.date AT TIME ZONE 'Africa/Dakar')::date", 'paidDate')
+      .addSelect('payment.date', 'paidAt')
       .addSelect('COUNT(guest.id)', 'tickets')
       .where('demand.eventId = :eventId', { eventId: event.id })
       .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
       .groupBy('demand.id')
-      .addGroupBy("(payment.date AT TIME ZONE 'Africa/Dakar')::date")
+      .addGroupBy('payment.date')
       .getRawMany();
 
     const prices = (event.prices ?? []).slice().sort((a: any, b: any) => {
@@ -280,29 +277,14 @@ export class EventService {
       return at - bt;
     });
 
-    const toYmd = (d: any): string => {
-      if (!d) return '';
-      if (typeof d === 'string') return d.slice(0, 10);
-      if (d instanceof Date) return d.toISOString().slice(0, 10);
-      return new Date(d).toISOString().slice(0, 10);
-    };
-
     const ticketsByPrice = prices.map((p: any) => {
-      const fromYmd = toYmd(p.startDate);
-      const toYmdStr = toYmd(p.endDate);
+      const from = new Date(p.startDate);
+      // Inclure tous les paiements du "dernier jour" (borne de fin = fin de journée)
+      const to = new Date(p.endDate);
+      to.setHours(23, 59, 59, 999);
       const ticketsSold = soldRows.reduce((acc: number, r: any) => {
-        // TypeORM peut normaliser les alias en minuscules selon le driver
-        const paidRaw = r.paidDate ?? r.paiddate ?? '';
-        const paidYmd = (() => {
-          if (!paidRaw) return '';
-          if (paidRaw instanceof Date) return paidRaw.toISOString().slice(0, 10);
-          const s = String(paidRaw);
-          if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-          const dt = new Date(s);
-          if (Number.isNaN(dt.getTime())) return '';
-          return dt.toISOString().slice(0, 10);
-        })();
-        const inRange = paidYmd >= fromYmd && paidYmd <= toYmdStr;
+        const dt = new Date(r.paidAt);
+        const inRange = dt.getTime() >= from.getTime() && dt.getTime() <= to.getTime();
         return acc + (inRange ? Number(r.tickets || 0) : 0);
       }, 0);
       return {
