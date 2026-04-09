@@ -279,7 +279,9 @@ export class EventService {
 
     const ticketsByPrice = prices.map((p: any) => {
       const from = new Date(p.startDate);
+      // Inclure tous les paiements du "dernier jour" (borne de fin = fin de journée)
       const to = new Date(p.endDate);
+      to.setHours(23, 59, 59, 999);
       const ticketsSold = soldRows.reduce((acc: number, r: any) => {
         const dt = new Date(r.paidAt);
         const inRange = dt.getTime() >= from.getTime() && dt.getTime() <= to.getTime();
