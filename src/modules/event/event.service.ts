@@ -288,7 +288,17 @@ export class EventService {
       const fromYmd = toYmd(p.startDate);
       const toYmdStr = toYmd(p.endDate);
       const ticketsSold = soldRows.reduce((acc: number, r: any) => {
-        const paidYmd = String(r.paidDate ?? '').slice(0, 10);
+        // TypeORM peut normaliser les alias en minuscules selon le driver
+        const paidRaw = r.paidDate ?? r.paiddate ?? '';
+        const paidYmd = (() => {
+          if (!paidRaw) return '';
+          if (paidRaw instanceof Date) return paidRaw.toISOString().slice(0, 10);
+          const s = String(paidRaw);
+          if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+          const dt = new Date(s);
+          if (Number.isNaN(dt.getTime())) return '';
+          return dt.toISOString().slice(0, 10);
+        })();
         const inRange = paidYmd >= fromYmd && paidYmd <= toYmdStr;
         return acc + (inRange ? Number(r.tickets || 0) : 0);
       }, 0);
