@@ -161,7 +161,7 @@ export class DemandService {
       );
     }
 
-    this.logger.debug(`Demand loaded: ${demand.createdAt} `);
+    this.logger.log(`Demand loaded: ${demand.createdAt} `);
 
     return demand;
   }
