@@ -213,6 +213,7 @@ export class EventService {
     });
   }
 
+  
   async getAccounting(slug: string) {
     const event = await this.eventRepository.findOne({
       where: { slug },
@@ -257,29 +258,29 @@ export class EventService {
     });
 
     // IMPORTANT:
-    // - `payment.date` est un `timestamp without time zone` stocké en UTC
-    // - `price.startDate/endDate` sont des `date`
-    // - Le serveur tourne en timezone Berlin
-    // On force tout en UTC pour avoir une cohérence entre les dates de tarifs et les dates de paiement
+    // - `payment.date` est un `timestamp without time zone` mais TypeORM stocke en timezone Berlin
+    // - `price.startDate/endDate` sont des `date` (pas de timezone)
+    // On convertit payment.date de Berlin vers UTC pour extraire la vraie date du paiement
+    // et la comparer correctement avec les dates de tarifs
 
     const prices = await this.priceRepository
       .createQueryBuilder('price')
       .select('price.id', 'id')
       .addSelect('price.name', 'name')
       .addSelect('price.amount', 'amount')
-      // ✅ Forcer la conversion en UTC pour être cohérent avec soldByDateRows
-      .addSelect("to_char(price.startDate AT TIME ZONE 'UTC', 'YYYY-MM-DD')", 'startDate')
-      .addSelect("to_char(price.endDate AT TIME ZONE 'UTC', 'YYYY-MM-DD')", 'endDate')
+      // Format stable pour les dates
+      .addSelect("to_char(price.startDate, 'YYYY-MM-DD')", 'startDate')
+      .addSelect("to_char(price.endDate, 'YYYY-MM-DD')", 'endDate')
       .where('price.eventId = :eventId', { eventId: event.id })
       .orderBy('price.startDate', 'ASC')
       .getRawMany();
 
-    // ✅ Convertir la date de paiement en UTC pour éviter les décalages horaires
+    // ✅ FIX: Convertir payment.date de Berlin vers UTC avant d'extraire la date
+    // Un paiement à 22h43 UTC stocké comme 00h43 Berlin doit être compté comme fait la veille
     const soldByDateRows = await this.demandRepository
       .createQueryBuilder('demand')
       .innerJoin('demand.payment', 'payment')
       .leftJoin('demand.guests', 'guest')
-      // ✅ Le timestamp est en Berlin, on le ramène en UTC pour avoir la vraie date du paiement
       .select(
         "to_char((payment.date AT TIME ZONE 'Europe/Berlin' AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD')",
         'paidDate'
@@ -295,7 +296,7 @@ export class EventService {
       const to = String(p.endDate);
       const ticketsSold = (soldByDateRows ?? []).reduce((acc: number, r: any) => {
         const paidDate = String(r.paidDate);
-        const inRange = paidDate >= from && paidDate <= to;
+        const inRange = paidDate >= from && paidDate <= to; // "YYYY-MM-DD" => comparaison lexicographique OK
         return acc + (inRange ? Number(r.tickets || 0) : 0);
       }, 0);
 
@@ -326,7 +327,6 @@ export class EventService {
       incomes,
     };
   }
-
   async addExpense(slug: string, payload: { label: string; amount: number; note?: string }) {
     const event = await this.eventRepository.findOne({ where: { slug } });
     if (!event) {
