@@ -257,46 +257,44 @@ export class EventService {
     });
 
     // IMPORTANT:
-    // - `payment.date` est un `timestamp without time zone`
+    // - `payment.date` est un `timestamp without time zone` stocké en UTC
     // - `price.startDate/endDate` sont des `date`
-    // On ramène tout au niveau "date" en SQL en appliquant la timezone locale (Africa/Dakar)
-    // pour éviter les décalages qui font basculer un paiement de 23h du jour J vers J+1
+    // - Le serveur tourne en timezone Berlin
+    // On force tout en UTC pour avoir une cohérence entre les dates de tarifs et les dates de paiement
 
     const prices = await this.priceRepository
       .createQueryBuilder('price')
       .select('price.id', 'id')
       .addSelect('price.name', 'name')
       .addSelect('price.amount', 'amount')
-      // Forcer un format stable, sinon `getRawMany()` peut renvoyer Date|string selon driver/options.
-      .addSelect("to_char(price.startDate, 'YYYY-MM-DD')", 'startDate')
-      .addSelect("to_char(price.endDate, 'YYYY-MM-DD')", 'endDate')
+      // ✅ Forcer la conversion en UTC pour être cohérent avec soldByDateRows
+      .addSelect("to_char(price.startDate AT TIME ZONE 'UTC', 'YYYY-MM-DD')", 'startDate')
+      .addSelect("to_char(price.endDate AT TIME ZONE 'UTC', 'YYYY-MM-DD')", 'endDate')
       .where('price.eventId = :eventId', { eventId: event.id })
       .orderBy('price.startDate', 'ASC')
       .getRawMany();
 
-    // FIX: Appliquer AT TIME ZONE pour éviter le bug de décalage horaire
-    // où un paiement à 23h du jour J est compté comme J+1
+    // ✅ Convertir payment.date (UTC) en date UTC pour la comparaison
     const soldByDateRows = await this.demandRepository
-    .createQueryBuilder('demand')
-    .innerJoin('demand.payment', 'payment')
-    .leftJoin('demand.guests', 'guest')
-    // ✅ Interpréter payment.date comme UTC et extraire la date en UTC
-    .select(
-      "to_char((payment.date AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD')",
-      'paidDate'
-    )
-    .addSelect('COUNT(guest.id)', 'tickets')
-    .where('demand.eventId = :eventId', { eventId: event.id })
-    .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
-    .groupBy("(payment.date AT TIME ZONE 'UTC')::date")
-    .getRawMany();
+      .createQueryBuilder('demand')
+      .innerJoin('demand.payment', 'payment')
+      .leftJoin('demand.guests', 'guest')
+      .select(
+        "to_char((payment.date AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD')",
+        'paidDate'
+      )
+      .addSelect('COUNT(guest.id)', 'tickets')
+      .where('demand.eventId = :eventId', { eventId: event.id })
+      .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
+      .groupBy("(payment.date AT TIME ZONE 'UTC')::date")
+      .getRawMany();
 
     const ticketsByPrice = (prices ?? []).map((p: any) => {
       const from = String(p.startDate);
       const to = String(p.endDate);
       const ticketsSold = (soldByDateRows ?? []).reduce((acc: number, r: any) => {
         const paidDate = String(r.paidDate);
-        const inRange = paidDate >= from && paidDate <= to; // "YYYY-MM-DD" => comparaison lexicographique OK
+        const inRange = paidDate >= from && paidDate <= to;
         return acc + (inRange ? Number(r.tickets || 0) : 0);
       }, 0);
 
