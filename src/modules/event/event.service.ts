@@ -274,19 +274,20 @@ export class EventService {
       .orderBy('price.startDate', 'ASC')
       .getRawMany();
 
-    // ✅ Convertir payment.date (UTC) en date UTC pour la comparaison
+    // ✅ Convertir la date de paiement en UTC pour éviter les décalages horaires
     const soldByDateRows = await this.demandRepository
       .createQueryBuilder('demand')
       .innerJoin('demand.payment', 'payment')
       .leftJoin('demand.guests', 'guest')
+      // ✅ Le timestamp est en Berlin, on le ramène en UTC pour avoir la vraie date du paiement
       .select(
-        "to_char((payment.date AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD')",
+        "to_char((payment.date AT TIME ZONE 'Europe/Berlin' AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD')",
         'paidDate'
       )
       .addSelect('COUNT(guest.id)', 'tickets')
       .where('demand.eventId = :eventId', { eventId: event.id })
       .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
-      .groupBy("(payment.date AT TIME ZONE 'UTC')::date")
+      .groupBy("(payment.date AT TIME ZONE 'Europe/Berlin' AT TIME ZONE 'UTC')::date")
       .getRawMany();
 
     const ticketsByPrice = (prices ?? []).map((p: any) => {
