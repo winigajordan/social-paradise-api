@@ -159,6 +159,8 @@ export class DemandService {
       );
     }
 
+    console.log(demand);
+
     return demand;
   }
 
