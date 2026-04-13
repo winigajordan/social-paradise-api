@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { CreateEventDto } from './dto/create-event.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -39,6 +39,8 @@ export class EventService {
 
   @InjectRepository(Guest)
   private guestRepository: Repository<Guest>
+
+  private readonly logger = new Logger(EventService.name);
 
   async create(createEventDto: CreateEventDto) {
 
@@ -213,6 +215,7 @@ export class EventService {
     });
   }
 
+  
   async getAccounting(slug: string) {
     const event = await this.eventRepository.findOne({
       where: { slug },
@@ -274,7 +277,7 @@ export class EventService {
       .orderBy('price.startDate', 'ASC')
       .getRawMany();
 
-    console.log('📊 [ACCOUNTING DEBUG] Prices récupérés:', JSON.stringify(prices, null, 2));
+    this.logger.log(`📊 [ACCOUNTING DEBUG] Prices récupérés: ${JSON.stringify(prices, null, 2)}`);
 
     // ✅ FIX: Convertir payment.date de Berlin vers UTC avant d'extraire la date
     // Un paiement à 22h43 UTC stocké comme 00h43 Berlin doit être compté comme fait la veille
@@ -292,29 +295,29 @@ export class EventService {
       .groupBy("(payment.date AT TIME ZONE 'Europe/Berlin' AT TIME ZONE 'UTC')::date")
       .getRawMany();
 
-    console.log('🎫 [ACCOUNTING DEBUG] Ventes par date:', JSON.stringify(soldByDateRows, null, 2));
+    this.logger.log(`🎫 [ACCOUNTING DEBUG] Ventes par date: ${JSON.stringify(soldByDateRows, null, 2)}`);
 
     const ticketsByPrice = (prices ?? []).map((p: any) => {
       const from = String(p.startDate);
       const to = String(p.endDate);
       
-      console.log(`\n💰 [ACCOUNTING DEBUG] Analyse tarif "${p.name}" (${p.id}):`);
-      console.log(`   Période: ${from} → ${to}`);
+      this.logger.log(`💰 [ACCOUNTING DEBUG] Analyse tarif "${p.name}" (${p.id}):`);
+      this.logger.log(`   Période: ${from} → ${to}`);
       
       const ticketsSold = (soldByDateRows ?? []).reduce((acc: number, r: any) => {
         const paidDate = String(r.paidDate);
         const inRange = paidDate >= from && paidDate <= to;
         
         if (inRange) {
-          console.log(`   ✅ ${paidDate}: ${r.tickets} tickets (MATCH)`);
+          this.logger.log(`   ✅ ${paidDate}: ${r.tickets} tickets (MATCH)`);
         } else {
-          console.log(`   ❌ ${paidDate}: ${r.tickets} tickets (HORS PÉRIODE)`);
+          this.logger.log(`   ❌ ${paidDate}: ${r.tickets} tickets (HORS PÉRIODE)`);
         }
         
         return acc + (inRange ? Number(r.tickets || 0) : 0);
       }, 0);
 
-      console.log(`   📈 Total tickets vendus: ${ticketsSold}`);
+      this.logger.log(`   📈 Total tickets vendus: ${ticketsSold}`);
 
       return {
         priceId: Number(p.id),
@@ -326,7 +329,7 @@ export class EventService {
       };
     });
 
-    console.log('\n📦 [ACCOUNTING DEBUG] Résultat final ticketsByPrice:', JSON.stringify(ticketsByPrice, null, 2));
+    this.logger.log(`📦 [ACCOUNTING DEBUG] Résultat final ticketsByPrice: ${JSON.stringify(ticketsByPrice, null, 2)}`);
 
     const currentBalance =
       initialBalance +
@@ -345,9 +348,6 @@ export class EventService {
       incomes,
     };
   }
-
-
-
 
   async addExpense(slug: string, payload: { label: string; amount: number; note?: string }) {
     const event = await this.eventRepository.findOne({ where: { slug } });
