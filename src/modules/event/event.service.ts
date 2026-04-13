@@ -259,8 +259,8 @@ export class EventService {
     // IMPORTANT:
     // - `payment.date` est un `timestamp without time zone`
     // - `price.startDate/endDate` sont des `date`
-    // Faire des `new Date(...)` et comparer en JS dépend du fuseau du serveur (local vs prod).
-    // On ramène tout au niveau "date" en SQL pour avoir un résultat identique partout.
+    // On ramène tout au niveau "date" en SQL en appliquant la timezone locale (Africa/Dakar)
+    // pour éviter les décalages qui font basculer un paiement de 23h du jour J vers J+1
 
     const prices = await this.priceRepository
       .createQueryBuilder('price')
@@ -274,16 +274,18 @@ export class EventService {
       .orderBy('price.startDate', 'ASC')
       .getRawMany();
 
+    // FIX: Appliquer AT TIME ZONE pour éviter le bug de décalage horaire
+    // où un paiement à 23h du jour J est compté comme J+1
     const soldByDateRows = await this.demandRepository
       .createQueryBuilder('demand')
       .innerJoin('demand.payment', 'payment')
       .leftJoin('demand.guests', 'guest')
-      // Idem: format "YYYY-MM-DD" stable
-      .select("to_char(payment.date::date, 'YYYY-MM-DD')", 'paidDate')
+      // Interpréter le timestamp dans la timezone locale avant d'extraire la date
+      .select("to_char(payment.date AT TIME ZONE 'Africa/Dakar', 'YYYY-MM-DD')", 'paidDate')
       .addSelect('COUNT(guest.id)', 'tickets')
       .where('demand.eventId = :eventId', { eventId: event.id })
       .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
-      .groupBy("payment.date::date")
+      .groupBy("to_char(payment.date AT TIME ZONE 'Africa/Dakar', 'YYYY-MM-DD')")
       .getRawMany();
 
     const ticketsByPrice = (prices ?? []).map((p: any) => {

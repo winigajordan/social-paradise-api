@@ -10,6 +10,14 @@ export class DemandWithMainGuestDto {
   numberOfGuests?: number;
   createdAt: Date;
   guests ?: any[];
+  payment?: {
+    id?: number;
+    amount?: number;
+    date?: Date;
+    phoneNumber?: string;
+    paymentCanal?: string;
+    paymentPlace?: string;
+  };
   mainGuest: {
     firstName: string;
     lastName: string;
@@ -38,6 +46,16 @@ export class DemandWithMainGuestDto {
       age: mainGuest.age,
     };
     this.guests = demand.guests;
+    this.payment = demand.payment
+      ? {
+          id: demand.payment.id,
+          amount: demand.payment.amount,
+          date: demand.payment.date,
+          phoneNumber: demand.payment.phoneNumber,
+          paymentCanal: demand.payment.paymentCanal,
+          paymentPlace: demand.payment.paymentPlace,
+        }
+      : undefined;
   }
 }
 

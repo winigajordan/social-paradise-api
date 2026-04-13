@@ -139,7 +139,7 @@ export class DemandService {
 
     const demands = await this.demandRepository.find({
       where,
-      relations: ['guests','tableItems'],
+      relations: ['guests', 'tableItems', 'payment'],
       order: { createdAt: 'DESC' },
     });
 
