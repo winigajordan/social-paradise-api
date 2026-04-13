@@ -280,15 +280,15 @@ export class EventService {
     .createQueryBuilder('demand')
     .innerJoin('demand.payment', 'payment')
     .leftJoin('demand.guests', 'guest')
-    // ✅ CORRECTION: D'abord interpréter comme UTC, puis convertir vers Africa/Dakar
+    // ✅ Interpréter payment.date comme UTC et extraire la date en UTC
     .select(
-      "to_char((payment.date AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Dakar')::date, 'YYYY-MM-DD')",
+      "to_char((payment.date AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD')",
       'paidDate'
     )
     .addSelect('COUNT(guest.id)', 'tickets')
     .where('demand.eventId = :eventId', { eventId: event.id })
     .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
-    .groupBy("(payment.date AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Dakar')::date")
+    .groupBy("(payment.date AT TIME ZONE 'UTC')::date")
     .getRawMany();
 
     const ticketsByPrice = (prices ?? []).map((p: any) => {
