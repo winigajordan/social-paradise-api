@@ -277,16 +277,19 @@ export class EventService {
     // FIX: Appliquer AT TIME ZONE pour éviter le bug de décalage horaire
     // où un paiement à 23h du jour J est compté comme J+1
     const soldByDateRows = await this.demandRepository
-      .createQueryBuilder('demand')
-      .innerJoin('demand.payment', 'payment')
-      .leftJoin('demand.guests', 'guest')
-      // Interpréter le timestamp dans la timezone locale avant d'extraire la date
-      .select("to_char(payment.date AT TIME ZONE 'Africa/Dakar', 'YYYY-MM-DD')", 'paidDate')
-      .addSelect('COUNT(guest.id)', 'tickets')
-      .where('demand.eventId = :eventId', { eventId: event.id })
-      .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
-      .groupBy("to_char(payment.date AT TIME ZONE 'Africa/Dakar', 'YYYY-MM-DD')")
-      .getRawMany();
+    .createQueryBuilder('demand')
+    .innerJoin('demand.payment', 'payment')
+    .leftJoin('demand.guests', 'guest')
+    // ✅ CORRECTION: D'abord interpréter comme UTC, puis convertir vers Africa/Dakar
+    .select(
+      "to_char((payment.date AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Dakar')::date, 'YYYY-MM-DD')",
+      'paidDate'
+    )
+    .addSelect('COUNT(guest.id)', 'tickets')
+    .where('demand.eventId = :eventId', { eventId: event.id })
+    .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
+    .groupBy("(payment.date AT TIME ZONE 'UTC' AT TIME ZONE 'Africa/Dakar')::date")
+    .getRawMany();
 
     const ticketsByPrice = (prices ?? []).map((p: any) => {
       const from = String(p.startDate);
