@@ -1,4 +1,4 @@
-import { BadRequestException, HttpException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateDemandDto } from './dto/create-demand.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Demand } from './entities/demand.entity';
@@ -18,6 +18,8 @@ import { UpdateDemandDiscountDto } from './dto/update-demand-discount.dto';
 
 @Injectable()
 export class DemandService {
+  private readonly logger = new Logger(DemandService.name);
+
   @InjectRepository(Demand)
   private readonly demandRepository: Repository<Demand>;
 
@@ -159,7 +161,7 @@ export class DemandService {
       );
     }
 
-    console.log(demand);
+    this.logger.debug(`Demand loaded: ${demand.createdAt} `);
 
     return demand;
   }
