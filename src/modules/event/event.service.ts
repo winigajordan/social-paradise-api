@@ -215,29 +215,28 @@ export class EventService {
     });
   }
 
-  
   async getAccounting(slug: string) {
     const event = await this.eventRepository.findOne({
       where: { slug },
       relations: ['prices'],
     });
-
+  
     if (!event) {
       throw new HttpException(`Événement avec le slug ${slug} introuvable.`, HttpStatus.NOT_FOUND);
     }
-
+  
     const [{ totalExpenses = 0 }] = await this.expenseRepository
       .createQueryBuilder('expense')
       .select('COALESCE(SUM(expense.amount), 0)', 'totalExpenses')
       .where('expense.eventId = :eventId', { eventId: event.id })
       .getRawMany();
-
+  
     const [{ totalIncomesManual = 0 }] = await this.incomeRepository
       .createQueryBuilder('income')
       .select('COALESCE(SUM(income.amount), 0)', 'totalIncomesManual')
       .where('income.eventId = :eventId', { eventId: event.id })
       .getRawMany();
-
+  
     const { totalPaidFromDemands = 0 } = await this.paymentRepository
       .createQueryBuilder('payment')
       .innerJoin('payment.demand', 'demand')
@@ -246,79 +245,69 @@ export class EventService {
       .where('event.id = :eventId', { eventId: event.id })
       .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
       .getRawOne();
-
+  
     const initialBalance = event.initialBalance ?? 0;
-
+  
     const expenses = await this.expenseRepository.find({
       where: { event: { id: event.id } },
       order: { createdAt: 'DESC' },
     });
-
+  
     const incomes = await this.incomeRepository.find({
       where: { event: { id: event.id } },
       order: { createdAt: 'DESC' },
     });
-
-    // IMPORTANT:
-    // - `payment.date` est un `timestamp without time zone` mais TypeORM stocke en timezone Berlin
-    // - `price.startDate/endDate` sont des `date` (pas de timezone)
-    // On convertit payment.date de Berlin vers UTC pour extraire la vraie date du paiement
-    // et la comparer correctement avec les dates de tarifs
-
+  
     const prices = await this.priceRepository
       .createQueryBuilder('price')
       .select('price.id', 'id')
       .addSelect('price.name', 'name')
       .addSelect('price.amount', 'amount')
-      // Format stable pour les dates
       .addSelect("to_char(price.startDate, 'YYYY-MM-DD')", 'startDate')
       .addSelect("to_char(price.endDate, 'YYYY-MM-DD')", 'endDate')
       .where('price.eventId = :eventId', { eventId: event.id })
       .orderBy('price.startDate', 'ASC')
       .getRawMany();
-
-    this.logger.log(`📊 [ACCOUNTING DEBUG] Prices récupérés: ${JSON.stringify(prices, null, 2)}`);
-
-    // ✅ FIX: Convertir payment.date de Berlin vers UTC avant d'extraire la date
-    // Un paiement à 22h43 UTC stocké comme 00h43 Berlin doit être compté comme fait la veille
+  
+    this.logger.log(`📊 [ACCOUNTING] Prices: ${JSON.stringify(prices, null, 2)}`);
+  
+    // ✅ SOLUTION COMPATIBLE PG 14 ET 16
+    // On convertit explicitement le timestamp en timestamptz avant de faire la conversion
     const soldByDateRows = await this.demandRepository
       .createQueryBuilder('demand')
       .innerJoin('demand.payment', 'payment')
       .leftJoin('demand.guests', 'guest')
       .select(
-        "to_char((payment.date AT TIME ZONE 'Europe/Berlin' AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD')",
+        "to_char((payment.date::timestamp AT TIME ZONE 'Europe/Berlin' AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD')",
         'paidDate'
       )
       .addSelect('COUNT(guest.id)', 'tickets')
       .where('demand.eventId = :eventId', { eventId: event.id })
       .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
-      .groupBy("(payment.date AT TIME ZONE 'Europe/Berlin' AT TIME ZONE 'UTC')::date")
+      .groupBy("(payment.date::timestamp AT TIME ZONE 'Europe/Berlin' AT TIME ZONE 'UTC')::date")
       .getRawMany();
-
-    this.logger.log(`🎫 [ACCOUNTING DEBUG] Ventes par date: ${JSON.stringify(soldByDateRows, null, 2)}`);
-
+  
+    this.logger.log(`🎫 [ACCOUNTING] Ventes par date: ${JSON.stringify(soldByDateRows, null, 2)}`);
+  
     const ticketsByPrice = (prices ?? []).map((p: any) => {
       const from = String(p.startDate);
       const to = String(p.endDate);
       
-      this.logger.log(`💰 [ACCOUNTING DEBUG] Analyse tarif "${p.name}" (${p.id}):`);
-      this.logger.log(`   Période: ${from} → ${to}`);
+      this.logger.log(`💰 [ACCOUNTING] Tarif "${p.name}" (${from} → ${to})`);
       
       const ticketsSold = (soldByDateRows ?? []).reduce((acc: number, r: any) => {
         const paidDate = String(r.paidDate);
         const inRange = paidDate >= from && paidDate <= to;
         
         if (inRange) {
-          this.logger.log(`   ✅ ${paidDate}: ${r.tickets} tickets (MATCH)`);
-        } else {
-          this.logger.log(`   ❌ ${paidDate}: ${r.tickets} tickets (HORS PÉRIODE)`);
+          this.logger.log(`   ✅ ${paidDate}: ${r.tickets} tickets`);
         }
         
         return acc + (inRange ? Number(r.tickets || 0) : 0);
       }, 0);
-
-      this.logger.log(`   📈 Total tickets vendus: ${ticketsSold}`);
-
+  
+      this.logger.log(`   📈 Total: ${ticketsSold} tickets`);
+  
       return {
         priceId: Number(p.id),
         name: p.name ?? null,
@@ -328,15 +317,15 @@ export class EventService {
         ticketsSold,
       };
     });
-
-    this.logger.log(`📦 [ACCOUNTING DEBUG] Résultat final ticketsByPrice: ${JSON.stringify(ticketsByPrice, null, 2)}`);
-
+  
+    this.logger.log(`📦 [ACCOUNTING] Final: ${JSON.stringify(ticketsByPrice, null, 2)}`);
+  
     const currentBalance =
       initialBalance +
       Number(totalIncomesManual) +
       Number(totalPaidFromDemands) -
       Number(totalExpenses);
-
+  
     return {
       initialBalance,
       totalExpenses: Number(totalExpenses),
@@ -348,7 +337,6 @@ export class EventService {
       incomes,
     };
   }
-
   async addExpense(slug: string, payload: { label: string; amount: number; note?: string }) {
     const event = await this.eventRepository.findOne({ where: { slug } });
     if (!event) {
