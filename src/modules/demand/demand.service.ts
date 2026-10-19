@@ -15,6 +15,7 @@ import { Table } from '../table/entities/table.entity';
 import { DemandTableItem } from './entities/demand-table-item.entity';
 import { Payment } from '../payment/entities/payment.entity';
 import { UpdateDemandDiscountDto } from './dto/update-demand-discount.dto';
+import { Price } from '../price/entities/price.entity';
 
 @Injectable()
 export class DemandService {
@@ -64,7 +65,7 @@ export class DemandService {
 
     const event = await this.eventRepository.findOne({
       where: { slug: createDemandDto.eventSlug },
-      relations: ['tables'],
+      relations: ['tables', 'prices'],
     });
 
     /*if (tables.length !== wantedIds.length) {
@@ -74,6 +75,7 @@ export class DemandService {
     if (!event)
       throw new HttpException('Événement introuvable', HttpStatus.NOT_FOUND);
     demand.event = event;
+    demand.price = await this.resolveDemandPrice(event, createDemandDto.priceId);
     if(createDemandDto.tableSelections) {
       const wantedIds = createDemandDto.tableSelections.map((s) => s.tableId);
       const tables = await this.tableRepo.findBy({ id: In(wantedIds) });
@@ -111,7 +113,7 @@ export class DemandService {
 
      savedDemand = await this.demandRepository.findOneOrFail({
       where: { slug: savedDemand.slug },
-      relations: ['guests', 'event', 'tableItems' ],
+      relations: ['guests', 'event', 'tableItems', 'price' ],
     });
 
     await this.mailService.notifyNewDemandToAdmin(savedDemand);
@@ -151,7 +153,7 @@ export class DemandService {
   async findOneBySlug(slug: string) {
     const demand = await this.demandRepository.findOne({
       where: { slug },
-      relations: ['guests', 'event','payment', 'tableItems' ],
+      relations: ['guests', 'event','payment', 'tableItems', 'price' ],
     });
 
     if (!demand) {
@@ -424,6 +426,101 @@ export class DemandService {
         await demandRepo.save(demand);
       }
     });
+  }
+
+  async syncPriceForPayment(slug: string, priceId?: number): Promise<Price | null> {
+    const demand = await this.demandRepository.findOne({
+      where: { slug },
+      relations: ['price', 'event', 'event.prices'],
+    });
+
+    if (!demand?.event) {
+      throw new HttpException(
+        `Demande avec le slug ${slug} introuvable.`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const today = this.todayKey();
+    const active = (demand.event.prices ?? []).filter((price) => this.isPriceActive(price, today));
+    const chosen = demand.price ?? null;
+    let next: Price | null = null;
+
+    if (chosen && this.isPriceActive(chosen, today)) {
+      next = chosen;
+    } else if (priceId != null) {
+      next = active.find((price) => Number(price.id) === Number(priceId)) ?? null;
+      if (!next) {
+        throw new BadRequestException("Ce tarif ne correspond pas à la période en cours.");
+      }
+    } else {
+      const byName = chosen?.name
+        ? active.find((price) => this.sameTariffName(price.name, chosen.name))
+        : undefined;
+      if (byName) next = byName;
+      else if (active.length === 1) next = active[0];
+      else if (active.length > 1) {
+        throw new BadRequestException('La période a changé. Veuillez choisir le tarif en cours.');
+      }
+    }
+
+    if (next && Number(demand.price?.id) !== Number(next.id)) {
+      demand.price = next;
+      await this.demandRepository.save(demand);
+    }
+
+    return next;
+  }
+
+  private sameTariffName(a?: string | null, b?: string | null): boolean {
+    const left = (a ?? '').trim().toLowerCase();
+    const right = (b ?? '').trim().toLowerCase();
+    return !!left && left === right;
+  }
+
+  private async resolveDemandPrice(event: Event, priceId?: number): Promise<Price | null> {
+    const prices = event.prices ?? [];
+    const today = this.todayKey();
+    const active = prices.filter((price) => this.isPriceActive(price, today));
+
+    if (priceId != null) {
+      const chosen = prices.find((price) => Number(price.id) === Number(priceId));
+      if (!chosen) {
+        throw new BadRequestException('Ce tarif ne correspond pas à cet événement.');
+      }
+      if (!this.isPriceActive(chosen, today)) {
+        throw new BadRequestException("Ce tarif n'est pas disponible aujourd'hui.");
+      }
+      return chosen;
+    }
+
+    if (active.length > 1) {
+      throw new BadRequestException('Plusieurs tarifs sont disponibles. Veuillez en choisir un.');
+    }
+
+    return active[0] ?? null;
+  }
+
+  private isPriceActive(price: Price, today = this.todayKey()): boolean {
+    const start = this.dateKey(price.startDate);
+    const end = this.dateKey(price.endDate);
+    if (!start || !end) return false;
+    return start <= today && today <= end;
+  }
+
+  private todayKey(): string {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  private dateKey(value: Date | string | null | undefined): string | null {
+    if (!value) return null;
+    if (typeof value === 'string') {
+      const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
+      if (match) return match[1];
+    }
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString().slice(0, 10);
   }
 
 

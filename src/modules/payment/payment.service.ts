@@ -23,8 +23,16 @@ export class PaymentService {
       return new HttpException('Payement already exists', HttpStatus.BAD_REQUEST);
     }
 
+    await this.demandService.syncPriceForPayment(
+      createPaymentDto.demandSlug,
+      createPaymentDto.priceId,
+    );
+
     const payment = this.paymentRepository.create({
-      ...createPaymentDto,
+      amount: createPaymentDto.amount,
+      phoneNumber: createPaymentDto.phoneNumber,
+      paymentCanal: createPaymentDto.paymentCanal,
+      paymentPlace: createPaymentDto.paymentPlace,
       demand: demand,
     });
 

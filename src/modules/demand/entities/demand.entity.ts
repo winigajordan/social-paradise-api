@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   Entity,
   Generated,
+  JoinColumn,
   ManyToOne,
   OneToMany,
   OneToOne,
@@ -14,6 +15,7 @@ import { Event } from '../../event/entities/event.entity';
 import { DemandType } from '../enum/demand-type.enum';
 import { Payment } from '../../payment/entities/payment.entity';
 import { DemandTableItem } from './demand-table-item.entity';
+import { Price } from '../../price/entities/price.entity';
 
 @Entity()
 export class Demand {
@@ -63,5 +65,9 @@ export class Demand {
 
   @Column({ type: 'float', nullable: true })
   discountAmount?: number;
+
+  @ManyToOne(() => Price, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'priceId' })
+  price?: Price | null;
 
 }

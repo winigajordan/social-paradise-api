@@ -277,36 +277,49 @@ export class EventService {
       .createQueryBuilder('demand')
       .innerJoin('demand.payment', 'payment')
       .leftJoin('demand.guests', 'guest')
-      .select(
+      .leftJoin('demand.price', 'chosenPrice')
+      .select('chosenPrice.id', 'priceId')
+      .addSelect(
         "to_char((payment.date::timestamp AT TIME ZONE 'Europe/Berlin' AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD')",
         'paidDate'
       )
       .addSelect('COUNT(guest.id)', 'tickets')
       .where('demand.eventId = :eventId', { eventId: event.id })
       .andWhere('demand.status = :status', { status: DemandStatus.PAYEE })
-      .groupBy("(payment.date::timestamp AT TIME ZONE 'Europe/Berlin' AT TIME ZONE 'UTC')::date")
+      .groupBy('chosenPrice.id')
+      .addGroupBy("(payment.date::timestamp AT TIME ZONE 'Europe/Berlin' AT TIME ZONE 'UTC')::date")
       .getRawMany();
   
     this.logger.log(`🎫 [ACCOUNTING] Ventes par date: ${JSON.stringify(soldByDateRows, null, 2)}`);
+
+    const ticketsCount = new Map<number, number>();
+    for (const price of prices ?? []) {
+      ticketsCount.set(Number(price.id), 0);
+    }
+
+    for (const row of soldByDateRows ?? []) {
+      const tickets = Number(row.tickets || 0);
+      const explicitId = row.priceId != null ? Number(row.priceId) : null;
+      if (explicitId && ticketsCount.has(explicitId)) {
+        ticketsCount.set(explicitId, (ticketsCount.get(explicitId) ?? 0) + tickets);
+        continue;
+      }
+
+      const paidDate = String(row.paidDate);
+      const matches = (prices ?? [])
+        .filter((price: any) => paidDate >= String(price.startDate) && paidDate <= String(price.endDate))
+        .sort((a: any, b: any) => Number(a.id) - Number(b.id));
+      if (!matches.length) continue;
+      const fallbackId = Number(matches[0].id);
+      ticketsCount.set(fallbackId, (ticketsCount.get(fallbackId) ?? 0) + tickets);
+    }
   
     const ticketsByPrice = (prices ?? []).map((p: any) => {
       const from = String(p.startDate);
       const to = String(p.endDate);
-      
-      this.logger.log(`💰 [ACCOUNTING] Tarif "${p.name}" (${from} → ${to})`);
-      
-      const ticketsSold = (soldByDateRows ?? []).reduce((acc: number, r: any) => {
-        const paidDate = String(r.paidDate);
-        const inRange = paidDate >= from && paidDate <= to;
-        
-        if (inRange) {
-          this.logger.log(`   ✅ ${paidDate}: ${r.tickets} tickets`);
-        }
-        
-        return acc + (inRange ? Number(r.tickets || 0) : 0);
-      }, 0);
-  
-      this.logger.log(`   📈 Total: ${ticketsSold} tickets`);
+      const ticketsSold = ticketsCount.get(Number(p.id)) ?? 0;
+
+      this.logger.log(`💰 [ACCOUNTING] Tarif "${p.name}" (${from} → ${to}) : ${ticketsSold} tickets`);
   
       return {
         priceId: Number(p.id),
