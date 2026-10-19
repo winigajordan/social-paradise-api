@@ -85,10 +85,10 @@ export class EventService {
 
     await this.priceRepository.save(priceEntities);
     */
-    return this.eventRepository.findOne({
+    return this.withSortedPrices(await this.eventRepository.findOne({
       where: { id: savedEvent.id },
       relations: ['prices','tables'],
-    });
+    }));
 
   }
 
@@ -111,7 +111,7 @@ export class EventService {
       throw new HttpException(`Événement avec le slug ${slug} introuvable.`, HttpStatus.NOT_FOUND);
     }
 
-    return event;
+    return this.withSortedPrices(event);
   }
 
 
@@ -209,10 +209,10 @@ export class EventService {
     // Enregistrer l'événement
     await this.eventRepository.save(event);
 
-    return this.eventRepository.findOne({
+    return this.withSortedPrices(await this.eventRepository.findOne({
       where: { id: event.id },
       relations: ['prices','tables']
-    });
+    }));
   }
 
   async getAccounting(slug: string) {
@@ -267,6 +267,8 @@ export class EventService {
       .addSelect("to_char(price.endDate, 'YYYY-MM-DD')", 'endDate')
       .where('price.eventId = :eventId', { eventId: event.id })
       .orderBy('price.startDate', 'ASC')
+      .addOrderBy('price.endDate', 'ASC')
+      .addOrderBy('price.amount', 'ASC')
       .getRawMany();
   
     this.logger.log(`📊 [ACCOUNTING] Prices: ${JSON.stringify(prices, null, 2)}`);
@@ -412,6 +414,33 @@ export class EventService {
     }
 
     await this.incomeRepository.remove(income);
+  }
+
+  private withSortedPrices<T extends { prices?: Price[] }>(event: T | null): T | null {
+    if (event?.prices) {
+      event.prices = this.sortPrices(event.prices);
+    }
+    return event;
+  }
+
+  private sortPrices(prices: Price[]): Price[] {
+    return [...prices].sort((a, b) => {
+      const start = this.priceDateKey(a.startDate).localeCompare(this.priceDateKey(b.startDate));
+      if (start !== 0) return start;
+      const end = this.priceDateKey(a.endDate).localeCompare(this.priceDateKey(b.endDate));
+      if (end !== 0) return end;
+      return Number(a.amount) - Number(b.amount) || a.id - b.id;
+    });
+  }
+
+  private priceDateKey(value: Date | string): string {
+    if (typeof value === 'string') {
+      const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
+      if (match) return match[1];
+    }
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString().slice(0, 10);
   }
 
 }
