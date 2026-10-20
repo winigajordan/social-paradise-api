@@ -158,6 +158,7 @@ export class EventService {
             existing.name = priceDto.name;
             existing.startDate = new Date(priceDto.startDate);
             existing.endDate = new Date(priceDto.endDate);
+            existing.soldOut = !!priceDto.soldOut;
             updatedPrices.push(existing);
           }
         } else {

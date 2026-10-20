@@ -23,6 +23,9 @@ export class Price {
   @Column({ type: 'date' })
   endDate: Date;
 
+  @Column({ default: false })
+  soldOut: boolean;
+
   @ManyToOne(() => Event, event => event.prices, { onDelete: 'CASCADE' })
   event: Event;
 }

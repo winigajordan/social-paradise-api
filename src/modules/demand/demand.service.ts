@@ -488,6 +488,9 @@ export class DemandService {
       if (!chosen) {
         throw new BadRequestException('Ce tarif ne correspond pas à cet événement.');
       }
+      if (chosen.soldOut) {
+        throw new BadRequestException('Ce tarif est sold out.');
+      }
       if (!this.isPriceActive(chosen, today)) {
         throw new BadRequestException("Ce tarif n'est pas disponible aujourd'hui.");
       }
@@ -502,6 +505,7 @@ export class DemandService {
   }
 
   private isPriceActive(price: Price, today = this.todayKey()): boolean {
+    if (price.soldOut) return false;
     const start = this.dateKey(price.startDate);
     const end = this.dateKey(price.endDate);
     if (!start || !end) return false;

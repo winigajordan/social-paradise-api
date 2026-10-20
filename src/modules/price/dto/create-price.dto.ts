@@ -1,4 +1,4 @@
-import { IsDateString, IsNumber, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreatePriceDto {
 
@@ -13,5 +13,9 @@ export class CreatePriceDto {
 
   @IsDateString()
   endDate: string;
+
+  @IsOptional()
+  @IsBoolean()
+  soldOut?: boolean;
 
 }
