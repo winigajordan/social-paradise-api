@@ -40,6 +40,9 @@ export class Event {
   @Column({ default: true })
   isActive: boolean;
 
+  @Column({ default: false })
+  comingSoon: boolean;
+
   @OneToMany(() => Demand, demand => demand.event)
   demands: Demand[];
 

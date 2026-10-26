@@ -74,6 +74,8 @@ export class DemandService {
 
     if (!event)
       throw new HttpException('Événement introuvable', HttpStatus.NOT_FOUND);
+    if (event.comingSoon)
+      throw new BadRequestException('Les demandes ne sont pas encore ouvertes pour cet événement.');
     demand.event = event;
     demand.price = await this.resolveDemandPrice(event, createDemandDto.priceId);
     if(createDemandDto.tableSelections) {

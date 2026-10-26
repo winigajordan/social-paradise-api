@@ -56,6 +56,7 @@ export class EventService {
       allowCash,
       cashPlacesConfig,
       isActive,
+      comingSoon,
     } = createEventDto;
 
     const event = this.eventRepository.create({
@@ -64,6 +65,7 @@ export class EventService {
       description,
       coverImage,
       isActive: isActive ?? true,
+      comingSoon: comingSoon ?? false,
       date: new Date(date),
       prices: prices,
       tables: tables,
@@ -134,6 +136,7 @@ export class EventService {
     if (dto.allowCash !== undefined) event.allowCash = dto.allowCash;
     if (dto.cashPlacesConfig) event.cashPlacesConfig = dto.cashPlacesConfig;
     if (dto.isActive !== undefined) event.isActive = dto.isActive;
+    if (dto.comingSoon !== undefined) event.comingSoon = dto.comingSoon;
     if (dto.initialBalance !== undefined && dto.initialBalance !== null) {
       event.initialBalance = dto.initialBalance;
     }

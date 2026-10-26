@@ -39,6 +39,11 @@ export class UpdateEventDto {
   @IsOptional()
   coverImage?: string;
 
+  @ApiProperty({ example: false, required: false, description: 'Coming soon : affiché sur l’accueil, page publique inaccessible' })
+  @IsOptional()
+  @IsBoolean()
+  comingSoon?: boolean;
+
   @ApiProperty({ example: true, required: false, description: 'Événement actif (demandes ouvertes)' })
   @IsOptional()
   @IsBoolean()
