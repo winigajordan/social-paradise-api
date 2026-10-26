@@ -1,46 +1,71 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { CreatePaymentDto } from './dto/create-payment.dto';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Payment } from './entities/payment.entity';
-import { Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { DemandService } from '../demand/demand.service';
 import { DemandStatus } from '../demand/enum/demand-status.enum';
+import { Demand } from '../demand/entities/demand.entity';
+
+// Statuts depuis lesquels le client peut notifier un paiement (comme sur la page de paiement)
+const PAYABLE_STATUSES = [DemandStatus.SOUMISE, DemandStatus.VALIDEE];
 
 @Injectable()
 export class PaymentService {
   constructor(
-    @InjectRepository(Payment)
-    private readonly paymentRepository: Repository<Payment>,
+    private readonly dataSource: DataSource,
     private readonly demandService: DemandService,
   ) {}
 
   async create(createPaymentDto: CreatePaymentDto) {
-    const demand = await this.demandService.findOneBySlugWithPayment(
-      createPaymentDto.demandSlug,
-    );
+    await this.dataSource.transaction(async (manager) => {
+      const demandRepo = manager.getRepository(Demand);
+      const paymentRepo = manager.getRepository(Payment);
 
-    if (demand.payment) {
-      return new HttpException('Payement already exists', HttpStatus.BAD_REQUEST);
-    }
+      // Verrou sur la demande : deux notifications simultanées ne peuvent pas créer deux paiements
+      const demand = await demandRepo.findOne({
+        where: { slug: createPaymentDto.demandSlug },
+        lock: { mode: 'pessimistic_write' },
+        loadEagerRelations: false,
+      });
 
-    await this.demandService.syncPriceForPayment(
-      createPaymentDto.demandSlug,
-      createPaymentDto.priceId,
-    );
+      if (!demand) {
+        throw new HttpException(
+          `Demande avec le slug ${createPaymentDto.demandSlug} introuvable.`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
 
-    const payment = this.paymentRepository.create({
-      amount: createPaymentDto.amount,
-      phoneNumber: createPaymentDto.phoneNumber,
-      paymentCanal: createPaymentDto.paymentCanal,
-      paymentPlace: createPaymentDto.paymentPlace,
-      demand: demand,
+      if (await paymentRepo.exists({ where: { demand: { id: demand.id } } })) {
+        throw new BadRequestException('Un paiement a déjà été notifié pour cette demande.');
+      }
+
+      if (!PAYABLE_STATUSES.includes(demand.status)) {
+        throw new BadRequestException('Cette demande ne peut plus recevoir de paiement.');
+      }
+
+      const price = await this.demandService.syncPriceForPayment(
+        createPaymentDto.demandSlug,
+        createPaymentDto.priceId,
+        manager,
+      );
+      if (!price) {
+        throw new BadRequestException("Aucun tarif n'est disponible aujourd'hui pour cette demande.");
+      }
+
+      // Le montant n'est jamais pris du client : il est recalculé ici
+      const amount = await this.demandService.computeAmountDue(demand.id, price, manager);
+
+      await paymentRepo.save(
+        paymentRepo.create({
+          amount,
+          phoneNumber: createPaymentDto.phoneNumber,
+          paymentCanal: createPaymentDto.paymentCanal,
+          paymentPlace: createPaymentDto.paymentPlace,
+          demand,
+        }),
+      );
+
+      await demandRepo.update(demand.id, { status: DemandStatus.PAIEMENT_NOTIFIE });
     });
-
-    await this.paymentRepository.save(payment);
-    await this.demandService.updateStatus(demand.slug, {
-      status: DemandStatus.PAIEMENT_NOTIFIE,
-    });
-
-    return;
   }
 }

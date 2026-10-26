@@ -2,7 +2,7 @@ import { BadRequestException, HttpException, HttpStatus, Inject, Injectable, Log
 import { CreateDemandDto } from './dto/create-demand.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Demand } from './entities/demand.entity';
-import { DataSource, In, Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Guest } from '../guest/entities/guest.entity';
 import { MailService } from '../../common/services/mail/mail.service';
 import { Event } from '../event/entities/event.entity';
@@ -42,8 +42,6 @@ export class DemandService {
   @Inject(MailService)
   private readonly mailService: MailService;
 
-  private readonly dataSource: DataSource;
-
   async create(createDemandDto: CreateDemandDto) {
     const guests = createDemandDto.guests;
 
@@ -55,72 +53,76 @@ export class DemandService {
       );
     }
 
-    const mainGuest = guests.find((g) => g.isMainGuest === true);
+    const mainGuest = mainGuests[0];
 
-    const demand = this.demandRepository.create();
+    // Demande, tables et invités sont enregistrés ensemble : en cas d'erreur, rien n'est conservé
+    const savedDemand = await this.demandRepository.manager.transaction(async (manager) => {
+      const demandRepo = manager.getRepository(Demand);
+      const demand = demandRepo.create();
 
-    if (guests.length > 1) {
-      demand.type = DemandType.GROUP;
-    }
-
-    const event = await this.eventRepository.findOne({
-      where: { slug: createDemandDto.eventSlug },
-      relations: ['tables', 'prices'],
-    });
-
-    /*if (tables.length !== wantedIds.length) {
-      throw new BadRequestException('Certaines tables sont introuvables.');
-    }*/
-
-    if (!event)
-      throw new HttpException('Événement introuvable', HttpStatus.NOT_FOUND);
-    if (event.comingSoon)
-      throw new BadRequestException('Les demandes ne sont pas encore ouvertes pour cet événement.');
-    demand.event = event;
-    demand.price = await this.resolveDemandPrice(event, createDemandDto.priceId);
-    if(createDemandDto.tableSelections) {
-      const wantedIds = createDemandDto.tableSelections.map((s) => s.tableId);
-      const tables = await this.tableRepo.findBy({ id: In(wantedIds) });
-
-      const eventTableIds = new Set(event.tables.map((t) => t.id));
-      const invalid = tables.filter((t) => !eventTableIds.has(t.id));
-      if (invalid.length) {
-        throw new BadRequestException('Une ou plusieurs tables ne correspondent pas à cet événement.');
+      if (guests.length > 1) {
+        demand.type = DemandType.GROUP;
       }
-      demand.tableItems = createDemandDto.tableSelections.map((sel) => {
-        const table = tables.find((t) => t.id === sel.tableId)!;
-        return this.itemRepo.create({
-          table,
-          quantity: sel.quantity,
-          // unitPrice: table.price ?? null, // si tu veux snapshot
+
+      const event = await manager.getRepository(Event).findOne({
+        where: { slug: createDemandDto.eventSlug },
+        relations: ['tables', 'prices'],
+      });
+
+      if (!event)
+        throw new HttpException('Événement introuvable', HttpStatus.NOT_FOUND);
+      if (event.comingSoon)
+        throw new BadRequestException('Les demandes ne sont pas encore ouvertes pour cet événement.');
+      if (!event.isActive)
+        throw new BadRequestException('Les demandes sont fermées pour cet événement.');
+      demand.event = event;
+      demand.price = await this.resolveDemandPrice(event, createDemandDto.priceId);
+
+      if (createDemandDto.tableSelections?.length) {
+        const eventTables = new Map(event.tables.map((t) => [t.id, t]));
+        demand.tableItems = createDemandDto.tableSelections.map((sel) => {
+          const table = eventTables.get(sel.tableId);
+          if (!table) {
+            throw new BadRequestException('Une ou plusieurs tables ne correspondent pas à cet événement.');
+          }
+          return manager.getRepository(DemandTableItem).create({
+            table,
+            quantity: sel.quantity,
+          });
         });
-      });
-    }
-    let savedDemand = await this.demandRepository.save(demand);
+      }
+      const demandSaved = await demandRepo.save(demand);
 
-    const guestEntities = guests.map((g) => {
+      const guestRepo = manager.getRepository(Guest);
+      await guestRepo.save(
+        guests.map((g) => guestRepo.create({ ...g, demand: demandSaved })),
+      );
 
-      return this.guestRepository.create({
-        ...g,
-        demand: savedDemand,
+      return demandRepo.findOneOrFail({
+        where: { id: demandSaved.id },
+        relations: ['guests', 'event', 'tableItems', 'price'],
       });
     });
 
-    await this.guestRepository.save(guestEntities);
-
-    await this.mailService.sendTemplateEmail(
-      mainGuest!.email,
-      mainGuest!.firstName + ' ' + mainGuest!.lastName,
-    );
-
-     savedDemand = await this.demandRepository.findOneOrFail({
-      where: { slug: savedDemand.slug },
-      relations: ['guests', 'event', 'tableItems', 'price' ],
-    });
-
-    await this.mailService.notifyNewDemandToAdmin(savedDemand);
+    // Emails envoyés après le commit, sans bloquer ni faire échouer la réponse au client
+    this.sendNewDemandEmails(savedDemand, mainGuest);
 
     return savedDemand;
+  }
+
+  private sendNewDemandEmails(demand: Demand, mainGuest: { email: string; firstName: string; lastName: string }) {
+    const emails: [string, Promise<unknown>][] = [
+      ['confirmation invité', this.mailService.sendTemplateEmail(mainGuest.email, `${mainGuest.firstName} ${mainGuest.lastName}`)],
+      ['notification admin', this.mailService.notifyNewDemandToAdmin(demand)],
+    ];
+
+    for (const [label, sending] of emails) {
+      sending.catch((err) =>
+        this.logger.error(
+          `Échec de l'email "${label}" pour la demande ${demand.slug} : ${err?.message ?? err}`,
+        ),
+      );
+    }
   }
 
   async findByEventSlug(slug: string, filter?: DemandFilterDto) {
@@ -430,8 +432,13 @@ export class DemandService {
     });
   }
 
-  async syncPriceForPayment(slug: string, priceId?: number): Promise<Price | null> {
-    const demand = await this.demandRepository.findOne({
+  async syncPriceForPayment(
+    slug: string,
+    priceId: number | undefined,
+    manager: EntityManager,
+  ): Promise<Price | null> {
+    const demandRepo = manager.getRepository(Demand);
+    const demand = await demandRepo.findOne({
       where: { slug },
       relations: ['price', 'event', 'event.prices'],
     });
@@ -468,10 +475,30 @@ export class DemandService {
 
     if (next && Number(demand.price?.id) !== Number(next.id)) {
       demand.price = next;
-      await this.demandRepository.save(demand);
+      await demandRepo.save(demand);
     }
 
     return next;
+  }
+
+  /**
+   * Montant dû pour une demande, calculé côté serveur (même formule que la page de paiement) :
+   * tarif × nombre d'invités + tables − remise, jamais négatif.
+   */
+  async computeAmountDue(demandId: number, price: Price, manager: EntityManager): Promise<number> {
+    const demand = await manager.getRepository(Demand).findOneOrFail({
+      where: { id: demandId },
+      relations: ['guests', 'tableItems'],
+    });
+
+    const participantsTotal = Number(price.amount) * (demand.guests?.length ?? 0);
+    const tablesTotal = (demand.tableItems ?? []).reduce(
+      (sum, item) => sum + Number(item.table.amount) * item.quantity,
+      0,
+    );
+    const discount = Math.max(0, Number(demand.discountAmount ?? 0));
+
+    return Math.round(Math.max(0, participantsTotal + tablesTotal - discount));
   }
 
   private sameTariffName(a?: string | null, b?: string | null): boolean {
