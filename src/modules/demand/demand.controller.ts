@@ -13,17 +13,22 @@ import { DemandFilterDto } from './dto/demand-filter.dto';
 import { UpdateDemandStatusDto } from './dto/update-demand-status.dto';
 import { Transaction } from 'typeorm';
 import { UpdateDemandDiscountDto } from './dto/update-demand-discount.dto';
+import { Public } from '../../common/decorators/public.decorator';
 
 
+// Le client crée sa demande et la consulte via son slug (UUID non devinable) ;
+// tout le reste est réservé aux ADMIN
 @Controller('demand')
 export class DemandController {
   constructor(private readonly demandService: DemandService) {}
 
+  @Public()
   @Post()
   async create(@Body() createDemandDto: CreateDemandDto) {
     return this.demandService.create(createDemandDto);
   }
 
+  @Public()
   @Get(':slug')
   async getOne(@Param('slug') slug: string) {
     return this.demandService.findOneBySlug(slug);

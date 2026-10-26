@@ -1,10 +1,25 @@
-import { Controller, Post, Body, Inject, Get, Put, Delete } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Inject,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Request,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+// Réservé aux ADMIN (règle par défaut du RolesGuard)
 @Controller('user')
 @ApiTags('Gestion des utilisateurs')
+@ApiBearerAuth()
 export class UserController {
 
   @Inject(UserService)
@@ -19,7 +34,10 @@ export class UserController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Suppression d\'un utilisateur' })
-  deleteUser(@Body('id') id: number) {
+  deleteUser(@Param('id', ParseIntPipe) id: number, @Request() req) {
+    if (req.user.id === id) {
+      throw new BadRequestException('Vous ne pouvez pas supprimer votre propre compte.');
+    }
     return this.userService.delete(id);
   }
 
@@ -32,10 +50,15 @@ export class UserController {
   // Modifiy user role
   @Put('/modify-role/:id')
   @ApiOperation({ summary: 'Modification du rôle d\'un utilisateur' })
-  modifyUserRole(@Body('role') role: string, @Body('id') id: number) {
-    return this.userService.updateRole(id, role);
+  modifyUserRole(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateUserRoleDto,
+    @Request() req,
+  ) {
+    if (req.user.id === id) {
+      throw new BadRequestException('Vous ne pouvez pas modifier votre propre rôle.');
+    }
+    return this.userService.updateRole(id, dto.role);
   }
-
-
 
 }

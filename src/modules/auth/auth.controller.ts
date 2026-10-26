@@ -1,14 +1,17 @@
-import { Controller, Get, Post, Body, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt.auth.guard';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Public } from '../../common/decorators/public.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../user/enum/user-role.enum';
 
 @ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post("/login")
   @ApiOperation({ summary: 'Login' })
   async login(@Body() loginDto: LoginDto) {
@@ -18,7 +21,7 @@ export class AuthController {
 
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @Roles(UserRole.ADMIN, UserRole.SECURITY)
   @ApiOperation({ summary: 'Test Jwt' })
   @ApiBearerAuth()
   testToken(@Request() req) {

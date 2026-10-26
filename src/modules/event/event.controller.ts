@@ -2,7 +2,9 @@ import { Controller, Delete, Get, Post, Body, Param, Put } from '@nestjs/common'
 import { EventService } from './event.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { Public } from '../../common/decorators/public.decorator';
 
+// Lecture publique (homepage, page event) ; tout le reste est réservé aux ADMIN
 @Controller('event')
 export class EventController {
 
@@ -18,11 +20,13 @@ export class EventController {
     return this.eventService.create(createEventDto);
   }
 
+  @Public()
   @Get()
   async findAll() {
     return this.eventService.findAll();
   }
 
+  @Public()
   @Get(':slug')
   async findOne(@Param('slug') slug: string) {
     return this.eventService.findOneBySlug(slug);

@@ -14,6 +14,9 @@ import { PriceModule } from './modules/price/price.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { FileUploadModule } from './modules/file-upload/file-upload.module';
 import { TableModule } from './modules/table/table.module';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './common/guards/jwt.auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
   imports: [
@@ -33,6 +36,11 @@ import { TableModule } from './modules/table/table.module';
     TableModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Toutes les routes exigent un JWT (sauf @Public()) puis le bon rôle (ADMIN par défaut)
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+  ],
 })
 export class AppModule {}

@@ -1,5 +1,6 @@
 import { BeforeInsert, Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { UserRole } from '../enum/user-role.enum';
 
 @Entity()
 export class User {
@@ -10,11 +11,12 @@ export class User {
   @Column()
   email: string;
 
-  @Column()
+  // Jamais chargé par défaut : seul le login le demande explicitement
+  @Column({ select: false })
   password: string;
 
   @Column({ nullable: false, default: 'ADMIN' })
-  role: string;
+  role: UserRole;
 
   @BeforeInsert()
   async hashPassword() {
